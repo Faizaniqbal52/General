@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Delivery Management System</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --page:        #0d0d0d;
+    --surface:     #1a1a19;
+    --surface-2:   #232322;
+    --ink:         #ffffff;
+    --ink-2:       #c3c2b7;
+    --muted:       #898781;
+    --hairline:    rgba(255,255,255,0.10);
+    --grid:        #2c2c2a;
+    --accent:      #3987e5;
+    --good:        #0ca30c;
+    --warning:     #fab219;
+    --critical:    #d03b3b;
+    --violet:      #9085e9;
+    --orange:      #d95926;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100vh;
+  }
+  a { color: var(--accent); }
+  button {
+    font: inherit; cursor: pointer; border: 1px solid var(--hairline);
+    background: var(--surface-2); color: var(--ink);
+    border-radius: 6px; padding: 6px 12px;
+  }
+  button:hover { background: #2c2c2a; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { filter: brightness(1.1); }
+  button.small { padding: 2px 8px; font-size: 12px; }
+  input, select {
+    font: inherit; background: var(--page); color: var(--ink);
+    border: 1px solid var(--grid); border-radius: 6px; padding: 7px 10px; width: 100%;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  label { display: block; font-size: 12px; color: var(--ink-2); margin: 10px 0 4px; }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 16px; border-bottom: 1px solid var(--grid); margin-bottom: 20px;
+  }
+  header.top h1 { font-size: 18px; font-weight: 650; }
+  header.top .who { color: var(--ink-2); font-size: 13px; display: flex; gap: 12px; align-items: center; }
+  .role-chip {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    border: 1px solid var(--hairline); border-radius: 999px; padding: 2px 8px; color: var(--ink-2);
+  }
+  .live-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .live-dot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .live-dot.on { color: var(--good); }
+  .live-dot.on::before { background: var(--good); }
+
+  /* Stat tiles */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .tile { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 14px 16px; }
+  .tile .label { font-size: 12px; color: var(--ink-2); }
+  .tile .value { font-size: 30px; font-weight: 650; line-height: 1.2; margin-top: 2px; }
+  .tile .sub { font-size: 12px; color: var(--muted); }
+
+  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 18px; margin-bottom: 20px; }
+  .card h2 { font-size: 15px; font-weight: 650; margin-bottom: 12px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .row > div { flex: 1; min-width: 140px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 6px 10px; border-bottom: 1px solid var(--grid); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  td.num { font-variant-numeric: tabular-nums; }
+  tr.flash { animation: flash 1.6s ease-out; }
+  @keyframes flash { 0% { background: rgba(57,135,229,.25); } 100% { background: transparent; } }
+  .table-scroll { overflow-x: auto; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; padding: 2px 9px; border-radius: 999px;
+    border: 1px solid var(--hairline); color: var(--ink-2); white-space: nowrap;
+  }
+  .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--dot, var(--muted)); }
+  .badge.pending    { --dot: var(--muted); }
+  .badge.assigned   { --dot: var(--accent); }
+  .badge.picked_up  { --dot: var(--violet); }
+  .badge.in_transit { --dot: var(--warning); }
+  .badge.delivered  { --dot: var(--good); }
+  .badge.failed     { --dot: var(--critical); }
+  .badge.cancelled  { --dot: var(--orange); }
+
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .toast {
+    position: fixed; bottom: 20px; right: 20px; max-width: 320px;
+    background: var(--surface-2); border: 1px solid var(--hairline);
+    border-left: 3px solid var(--accent); border-radius: 8px;
+    padding: 10px 14px; font-size: 13px; opacity: 0; transition: opacity .25s;
+  }
+  .toast.show { opacity: 1; }
+  .error { color: var(--critical); font-size: 13px; margin-top: 8px; min-height: 18px; }
+  .muted { color: var(--muted); }
+
+  /* Auth screen */
+  #auth { max-width: 380px; margin: 10vh auto; }
+  #auth .card { padding: 26px; }
+  #auth h1 { font-size: 20px; margin-bottom: 4px; }
+  #auth p.tag { color: var(--ink-2); font-size: 13px; margin-bottom: 14px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .tabs button { flex: 1; }
+  .tabs button.active { background: var(--accent); border-color: var(--accent); }
+
+  /* Tracking timeline */
+  .timeline { list-style: none; padding-left: 0; margin-top: 10px; }
+  .timeline li { position: relative; padding: 0 0 14px 22px; border-left: 2px solid var(--grid); margin-left: 6px; }
+  .timeline li::before {
+    content: ""; position: absolute; left: -6px; top: 3px;
+    width: 10px; height: 10px; border-radius: 50%; background: var(--accent);
+    border: 2px solid var(--surface);
+  }
+  .timeline li:last-child { border-left-color: transparent; }
+  .timeline .when { color: var(--muted); font-size: 12px; }
+
+  .hidden { display: none !important; }
+  .section-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .section-tabs button.active { background: var(--accent); border-color: var(--accent); }
+  ul.plain { list-style: none; padding: 0; }
+  ul.plain li { padding: 6px 0; border-bottom: 1px solid var(--grid); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+</style>
+</head>
+<body>
+
+<!-- ======== AUTH ======== -->
+<div id="auth">
+  <div class="card">
+    <h1>Delivery Management System</h1>
+    <p class="tag">Sign in to manage deliveries in real time.</p>
+    <div class="tabs">
+      <button id="tab-login" class="active">Login</button>
+      <button id="tab-register">Register</button>
+    </div>
+    <div id="reg-name-wrap" class="hidden">
+      <label for="auth-name">Name</label>
+      <input id="auth-name" placeholder="Your name" />
+    </div>
+    <label for="auth-email">Email</label>
+    <input id="auth-email" type="email" placeholder="admin@dms.local" />
+    <label for="auth-password">Password</label>
+    <input id="auth-password" type="password" placeholder="••••••••" />
+    <div class="error" id="auth-error"></div>
+    <button class="primary" id="auth-submit" style="width:100%">Login</button>
+    <p class="muted" style="margin-top:12px;font-size:12px">
+      Demo (after <code>npm run seed</code>): admin@dms.local / admin123 · user@dms.local / user1234
+    </p>
+  </div>
+</div>
+
+<!-- ======== APP ======== -->
+<div id="app" class="wrap hidden">
+  <header class="top">
+    <h1>📦 Delivery Management System</h1>
+    <div class="who">
+      <span class="live-dot" id="live">live</span>
+      <span id="who-name"></span>
+      <span class="role-chip" id="who-role"></span>
+      <button class="small" id="logout">Logout</button>
+    </div>
+  </header>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="section-tabs">
+    <button data-section="deliveries" class="active">Deliveries</button>
+    <button data-section="track">Track a package</button>
+    <button data-section="master" id="master-tab">Master data</button>
+  </div>
+
+  <!-- Deliveries -->
+  <section id="section-deliveries">
+    <div class="card">
+      <h2>New delivery</h2>
+      <div class="row">
+        <div><label>Customer</label><input id="d-customer" placeholder="Customer name" /></div>
+        <div><label>Phone</label><input id="d-phone" placeholder="+91-…" /></div>
+        <div><label>Weight (kg)</label><input id="d-weight" type="number" min="0" step="0.1" value="1" /></div>
+        <div><label>Zone</label><select id="d-zone"></select></div>
+      </div>
+      <div class="row">
+        <div><label>Pickup address</label><input id="d-pickup" placeholder="Pickup address" /></div>
+        <div><label>Drop address</label><input id="d-drop" placeholder="Drop address" /></div>
+        <div style="flex:0"><button class="primary" id="d-create">Create</button></div>
+      </div>
+      <div class="error" id="d-error"></div>
+    </div>
+
+    <div class="card">
+      <h2>Deliveries <span class="muted" id="d-count"></span></h2>
+      <div class="row" style="margin-bottom:10px">
+        <div><input id="f-q" placeholder="Search tracking # / customer / phone" /></div>
+        <div style="max-width:180px">
+          <select id="f-status">
+            <option value="">All statuses</option>
+            <option>pending</option><option>assigned</option><option>picked_up</option>
+            <option>in_transit</option><option>delivered</option><option>failed</option><option>cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Tracking #</th><th>Customer</th><th>Route</th><th>Agent</th><th>Status</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="d-rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tracking -->
+  <section id="section-track" class="hidden">
+    <div class="card">
+      <h2>Track a package</h2>
+      <div class="row">
+        <div><input id="t-number" placeholder="DMS-XXXXXXXX" /></div>
+        <div style="flex:0"><button class="primary" id="t-go">Track</button></div>
+      </div>
+      <div id="t-result"></div>
+    </div>
+  </section>
+
+  <!-- Master data (admin) -->
+  <section id="section-master" class="hidden">
+    <div class="card">
+      <h2>Zones</h2>
+      <div class="row">
+        <div><input id="z-name" placeholder="Zone name" /></div>
+        <div><input id="z-city" placeholder="City" /></div>
+        <div style="flex:0"><button class="primary" id="z-add">Add zone</button></div>
+      </div>
+      <ul class="plain" id="z-list"></ul>
+    </div>
+    <div class="card">
+      <h2>Vehicles</h2>
+      <div class="row">
+        <div><input id="v-plate" placeholder="Plate number" /></div>
+        <div><select id="v-type"><option>bike</option><option>van</option><option>truck</option></select></div>
+        <div><input id="v-cap" type="number" placeholder="Capacity kg" value="10" /></div>
+        <div style="flex:0"><button class="primary" id="v-add">Add vehicle</button></div>
+      </div>
+      <ul class="plain" id="v-list"></ul>
+    </div>
+    <div class="card">
+      <h2>Delivery agents</h2>
+      <div class="row">
+        <div><input id="a-name" placeholder="Agent name" /></div>
+        <div><input id="a-phone" placeholder="Phone" /></div>
+        <div><select id="a-zone"></select></div>
+        <div><select id="a-vehicle"></select></div>
+        <div style="flex:0"><button class="primary" id="a-add">Add agent</button></div>
+      </div>
+      <ul class="plain" id="a-list"></ul>
+    </div>
+    <div class="error" id="m-error"></div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const state = { token: localStorage.getItem('dms_token'), user: null, deliveries: [], agents: [], zones: [], vehicles: [], socket: null };
+const STATUS_LABEL = { pending: 'Pending', assigned: 'Assigned', picked_up: 'Picked up', in_transit: 'In transit', delivered: 'Delivered', failed: 'Failed', cancelled: 'Cancelled' };
+const NEXT_ACTIONS = { // status -> [label, next] pairs (assign handled separately)
+  assigned: [['Picked up', 'picked_up'], ['Cancel', 'cancelled']],
+  picked_up: [['In transit', 'in_transit'], ['Failed', 'failed']],
+  in_transit: [['Delivered', 'delivered'], ['Failed', 'failed']],
+  pending: [['Cancel', 'cancelled']],
+  failed: [], delivered: [], cancelled: [],
+};
+
+async function api(path, opts = {}) {
+  const res = await fetch('/api' + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(state.token ? { Authorization: 'Bearer ' + state.token } : {}) },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    if (res.status === 401 && state.user) logout();
+    const fields = data.fields ? ' — ' + Object.entries(data.fields).map(([k, v]) => `${k} ${v}`).join(', ') : '';
+    throw new Error((data.error || 'Request failed') + fields);
+  }
+  return data;
+}
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------- auth ---------- */
+let authMode = 'login';
+$('tab-login').onclick = () => setAuthMode('login');
+$('tab-register').onclick = () => setAuthMode('register');
+function setAuthMode(m) {
+  authMode = m;
+  $('tab-login').classList.toggle('active', m === 'login');
+  $('tab-register').classList.toggle('active', m === 'register');
+  $('reg-name-wrap').classList.toggle('hidden', m === 'login');
+  $('auth-submit').textContent = m === 'login' ? 'Login' : 'Create account';
+}
+$('auth-submit').onclick = async () => {
+  $('auth-error').textContent = '';
+  try {
+    const body = { email: $('auth-email').value.trim(), password: $('auth-password').value };
+    if (authMode === 'register') body.name = $('auth-name').value.trim();
+    const data = await api('/auth/' + authMode, { method: 'POST', body });
+    state.token = data.token;
+    state.user = data.user;
+    localStorage.setItem('dms_token', data.token);
+    enterApp();
+  } catch (e) { $('auth-error').textContent = e.message; }
+};
+$('auth-password').addEventListener('keydown', (e) => e.key === 'Enter' && $('auth-submit').click());
+$('logout').onclick = logout;
+function logout() {
+  localStorage.removeItem('dms_token');
+  state.token = null; state.user = null;
+  if (state.socket) state.socket.disconnect();
+  $('app').classList.add('hidden');
+  $('auth').classList.remove('hidden');
+}
+
+/* ---------- app ---------- */
+async function enterApp() {
+  $('auth').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  $('who-name').textContent = state.user.name;
+  $('who-role').textContent = state.user.role;
+  $('master-tab').classList.toggle('hidden', state.user.role !== 'admin');
+  connectSocket();
+  await Promise.all([loadMaster(), loadDeliveries(), loadStats()]);
+}
+
+function connectSocket() {
+  state.socket = io({ auth: { token: state.token } });
+  const dot = $('live');
+  state.socket.on('connect', () => dot.classList.add('on'));
+  state.socket.on('disconnect', () => dot.classList.remove('on'));
+  state.socket.on('delivery:created', (d) => { state.total++; upsertDelivery(d, true); loadStats(); toast(`New delivery ${d.tracking_number} for ${d.customer_name}`); });
+  state.socket.on('delivery:updated', (d) => { upsertDelivery(d, true); loadStats(); toast(`${d.tracking_number} → ${STATUS_LABEL[d.status]}`); });
+  state.socket.on('delivery:deleted', (d) => {
+    state.total--;
+    state.deliveries = state.deliveries.filter((x) => x.id !== d.id);
+    renderDeliveries(); loadStats(); toast(`${d.tracking_number} deleted`);
+  });
+}
+
+function upsertDelivery(d, flash) {
+  const i = state.deliveries.findIndex((x) => x.id === d.id);
+  if (i >= 0) state.deliveries[i] = d; else state.deliveries.unshift(d);
+  renderDeliveries(flash ? d.id : null);
+}
+
+/* ---------- stats ---------- */
+async function loadStats() {
+  try {
+    const s = await api('/stats');
+    const b = s.byStatus;
+    const active = (b.assigned || 0) + (b.picked_up || 0) + (b.in_transit || 0);
+    $('tiles').innerHTML = [
+      ['Total deliveries', s.totals.deliveries, ''],
+      ['Pending', b.pending || 0, 'awaiting assignment'],
+      ['Active', active, 'assigned → in transit'],
+      ['Delivered today', s.deliveredToday, ''],
+      ['Agents on duty', s.totals.agents, `${s.totals.vehicles} vehicles · ${s.totals.zones} zones`],
+    ].map(([label, value, sub]) =>
+      `<div class="tile"><div class="label">${label}</div><div class="value">${value}</div><div class="sub">${sub}</div></div>`
+    ).join('');
+  } catch { /* stats are non-critical */ }
+}
+
+/* ---------- deliveries ---------- */
+let filterTimer;
+$('f-q').oninput = () => { clearTimeout(filterTimer); filterTimer = setTimeout(loadDeliveries, 300); };
+$('f-status').onchange = loadDeliveries;
+
+async function loadDeliveries() {
+  const params = new URLSearchParams({ limit: 50 });
+  if ($('f-q').value.trim()) params.set('q', $('f-q').value.trim());
+  if ($('f-status').value) params.set('status', $('f-status').value);
+  const data = await api('/deliveries?' + params);
+  state.deliveries = data.deliveries;
+  state.total = data.pagination.total;
+  renderDeliveries();
+}
+
+function renderDeliveries(flashId) {
+  $('d-count').textContent = `(${state.total ?? state.deliveries.length})`;
+  $('d-rows').innerHTML = state.deliveries.map((d) => {
+    const actions = [];
+    if (['pending', 'failed'].includes(d.status) && state.agents.length) {
+      actions.push(`<select class="small" data-assign="${d.id}" style="width:auto;padding:2px 6px;font-size:12px">
+        <option value="">Assign…</option>
+        ${state.agents.filter((a) => a.active).map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}
+      </select>`);
+    }
+    for (const [label, next] of NEXT_ACTIONS[d.status] || []) {
+      actions.push(`<button class="small" data-status="${d.id}:${next}">${label}</button>`);
+    }
+    if (state.user.role === 'admin') actions.push(`<button class="small" data-del="${d.id}" title="Delete">✕</button>`);
+    return `<tr id="row-${d.id}" class="${flashId === d.id ? 'flash' : ''}">
+      <td class="num">${esc(d.tracking_number)}</td>
+      <td>${esc(d.customer_name)}<div class="muted">${esc(d.customer_phone)}</div></td>
+      <td>${esc(d.pickup_address)} <span class="muted">→</span> ${esc(d.drop_address)}
+          <div class="muted">${esc(d.zone_name || 'no zone')} · ${d.weight_kg} kg</div></td>
+      <td>${esc(d.agent_name || '—')}</td>
+      <td><span class="badge ${d.status}">${STATUS_LABEL[d.status]}</span></td>
+      <td><div class="actions">${actions.join('')}</div></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="muted">No deliveries yet.</td></tr>';
+
+  document.querySelectorAll('[data-status]').forEach((b) => (b.onclick = async () => {
+    const [id, status] = b.dataset.status.split(':');
+    try { await api(`/deliveries/${id}/status`, { method: 'POST', body: { status } }); } catch (e) { toast(e.message); }
+  }));
+  document.querySelectorAll('[data-assign]').forEach((s) => (s.onchange = async () => {
+    if (!s.value) return;
+    try { await api(`/deliveries/${s.dataset.assign}/assign`, { method: 'POST', body: { agent_id: Number(s.value) } }); }
+    catch (e) { toast(e.message); }
+  }));
+  document.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
+    if (!confirm('Delete this delivery?')) return;
+    try { await api(`/deliveries/${b.dataset.del}`, { method: 'DELETE' }); } catch (e) { toast(e.message); }
+  }));
+}
+
+$('d-create').onclick = async () => {
+  $('d-error').textContent = '';
+  try {
+    await api('/deliveries', { method: 'POST', body: {
+      customer_name: $('d-customer').value, customer_phone: $('d-phone').value,
+      pickup_address: $('d-pickup').value, drop_address: $('d-drop').value,
+      weight_kg: Number($('d-weight').value) || 0,
+      zone_id: $('d-zone').value ? Number($('d-zone').value) : undefined,
+    }});
+    ['d-customer', 'd-phone', 'd-pickup', 'd-drop'].forEach((id) => ($(id).value = ''));
+  } catch (e) { $('d-error').textContent = e.message; }
+};
+
+/* ---------- tracking ---------- */
+$('t-go').onclick = track;
+$('t-number').addEventListener('keydown', (e) => e.key === 'Enter' && track());
+async function track() {
+  const tn = $('t-number').value.trim();
+  if (!tn) return;
+  try {
+    const { delivery, events } = await api('/track/' + encodeURIComponent(tn));
+    $('t-result').innerHTML = `
+      <p style="margin-top:14px"><strong>${esc(delivery.tracking_number)}</strong> ·
+        <span class="badge ${delivery.status}">${STATUS_LABEL[delivery.status]}</span></p>
+      <p class="muted">${esc(delivery.customer_name)} · ${esc(delivery.drop_address)}
+        ${delivery.agent_name ? ' · agent: ' + esc(delivery.agent_name) : ''}</p>
+      <ul class="timeline">${events.map((e) => `
+        <li><strong>${STATUS_LABEL[e.status] || esc(e.status)}</strong>
+          ${e.note ? '— ' + esc(e.note) : ''}<div class="when">${esc(e.created_at)} UTC</div></li>`).join('')}
+      </ul>`;
+  } catch (e) { $('t-result').innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+}
+
+/* ---------- master data ---------- */
+async function loadMaster() {
+  const [z, v, a] = await Promise.all([api('/master/zones'), api('/master/vehicles'), api('/master/agents')]);
+  state.zones = z.zones; state.vehicles = v.vehicles; state.agents = a.agents;
+
+  $('d-zone').innerHTML = '<option value="">No zone</option>' + state.zones.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
+  $('a-zone').innerHTML = '<option value="">No zone</option>' + state.zones.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
+  $('a-vehicle').innerHTML = '<option value="">No vehicle</option>' + state.vehicles.map((x) => `<option value="${x.id}">${esc(x.plate_number)}</option>`).join('');
+
+  const admin = state.user.role === 'admin';
+  const del = (kind, id) => admin ? `<button class="small" data-mdel="${kind}:${id}">✕</button>` : '';
+  $('z-list').innerHTML = state.zones.map((x) => `<li><span>${esc(x.name)} <span class="muted">· ${esc(x.city)}</span></span>${del('zones', x.id)}</li>`).join('');
+  $('v-list').innerHTML = state.vehicles.map((x) => `<li><span>${esc(x.plate_number)} <span class="muted">· ${esc(x.type)} · ${x.capacity_kg} kg${x.active ? '' : ' · inactive'}</span></span>${del('vehicles', x.id)}</li>`).join('');
+  $('a-list').innerHTML = state.agents.map((x) => `<li><span>${esc(x.name)} <span class="muted">· ${esc(x.phone)} · ${esc(x.zone_name || 'no zone')} · ${esc(x.vehicle_plate || 'no vehicle')}</span></span>${del('agents', x.id)}</li>`).join('');
+
+  document.querySelectorAll('[data-mdel]').forEach((b) => (b.onclick = async () => {
+    const [kind, id] = b.dataset.mdel.split(':');
+    if (!confirm('Delete this record?')) return;
+    try { await api(`/master/${kind}/${id}`, { method: 'DELETE' }); await loadMaster(); await loadDeliveries(); }
+    catch (e) { $('m-error').textContent = e.message; }
+  }));
+}
+
+async function addMaster(path, body, clear) {
+  $('m-error').textContent = '';
+  try { await api(path, { method: 'POST', body }); clear.forEach((id) => ($(id).value = '')); await loadMaster(); }
+  catch (e) { $('m-error').textContent = e.message; }
+}
+$('z-add').onclick = () => addMaster('/master/zones', { name: $('z-name').value, city: $('z-city').value }, ['z-name', 'z-city']);
+$('v-add').onclick = () => addMaster('/master/vehicles', { plate_number: $('v-plate').value, type: $('v-type').value, capacity_kg: Number($('v-cap').value) || 0 }, ['v-plate']);
+$('a-add').onclick = () => addMaster('/master/agents', {
+  name: $('a-name').value, phone: $('a-phone').value,
+  zone_id: $('a-zone').value ? Number($('a-zone').value) : undefined,
+  vehicle_id: $('a-vehicle').value ? Number($('a-vehicle').value) : undefined,
+}, ['a-name', 'a-phone']);
+
+/* ---------- section tabs ---------- */
+document.querySelectorAll('.section-tabs button').forEach((b) => (b.onclick = () => {
+  document.querySelectorAll('.section-tabs button').forEach((x) => x.classList.toggle('active', x === b));
+  ['deliveries', 'track', 'master'].forEach((s) => $('section-' + s).classList.toggle('hidden', s !== b.dataset.section));
+}));
+
+/* ---------- boot ---------- */
+(async () => {
+  if (!state.token) return;
+  try {
+    const { user } = await api('/auth/me');
+    state.user = user;
+    enterApp();
+  } catch { logout(); }
+})();
+</script>
+</body>
+</html>
