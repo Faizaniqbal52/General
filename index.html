@@ -1,0 +1,1943 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#02040a">
+<meta name="description" content="PROJECT HORIZON — a cinematic interactive descent into an abandoned deep-space research station.">
+<title>PROJECT HORIZON // ORBITAL RESEARCH STATION</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@300;400;600&family=JetBrains+Mono:wght@300;400;700&display=swap">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   PROJECT HORIZON — single-file cinematic experience
+   HTML + CSS + Canvas 2D + vanilla JS. No frameworks, no assets.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root{
+  --accent:      #4de3ff;
+  --accent-soft: #4de3ff33;
+  --accent-dim:  #4de3ff14;
+  --ink:         #dff3ff;
+  --ink-dim:     #7d9fb4;
+  --void:        #02040a;
+  --display: 'Orbitron', 'Trebuchet MS', system-ui, sans-serif;
+  --body:    'Rajdhani', 'Segoe UI', system-ui, sans-serif;
+  --mono:    'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+  --hud-pad: clamp(14px, 2.6vw, 34px);
+}
+
+*{ box-sizing:border-box; }
+html{ scroll-behavior:auto; }
+html,body{ margin:0; padding:0; background:var(--void); }
+body{
+  color:var(--ink);
+  font-family:var(--body);
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+body.locked{ overflow:hidden; height:100vh; }
+::selection{ background:var(--accent); color:#00131b; }
+
+/* ── Background render surface ───────────────────────────────── */
+#scene{
+  position:fixed; inset:0;
+  width:100%; height:100%;
+  display:block;
+  z-index:0;
+  background:#02040a;
+}
+
+/* Film grain + scanlines + vignette, stacked over the canvas */
+.overlay{ position:fixed; inset:0; z-index:2; pointer-events:none; }
+#vignette{
+  background:
+    radial-gradient(120% 90% at 50% 46%, transparent 38%, rgba(0,0,0,.55) 78%, rgba(0,0,0,.92) 100%);
+  mix-blend-mode:multiply;
+}
+#scanlines{
+  background:repeating-linear-gradient(to bottom,
+    rgba(255,255,255,.030) 0px, rgba(255,255,255,.030) 1px,
+    transparent 1px, transparent 3px);
+  opacity:.5;
+}
+#aberration{
+  box-shadow:inset 0 0 240px rgba(77,227,255,.05);
+  background:
+    radial-gradient(80% 60% at 50% 100%, var(--accent-dim), transparent 70%);
+  transition:background .9s ease;
+}
+#flash{ background:#cfefff; opacity:0; transition:opacity .5s ease; z-index:9; }
+
+/* ── blast doors between decks (above the content, so they really close) ── */
+#doors{ position:fixed; inset:0; z-index:7; pointer-events:none; display:none; }
+#doors.on{ display:block; }
+#doors .leaf{
+  position:absolute; top:-2px; bottom:-2px; width:50.4%;
+  background:linear-gradient(90deg, #05090e 0%, #0e1720 40%, #16232e 72%, #0b131b 100%);
+  will-change:transform;
+}
+#doors .leaf::before{ /* plating seams */
+  content:''; position:absolute; inset:0;
+  background:repeating-linear-gradient(180deg,
+    rgba(255,255,255,.035) 0 2px, transparent 2px 74px);
+}
+#doors .leaf::after{ /* hazard edge */
+  content:''; position:absolute; top:0; bottom:0; width:34px;
+  background:repeating-linear-gradient(180deg,
+    var(--accent) 0 22px, rgba(9,15,21,.96) 22px 44px);
+  opacity:.6;
+}
+#doors .l{ left:0; }
+#doors .l::after{ right:0; }
+#doors .r{ right:0; }
+#doors .r::after{ left:0; }
+#doors .stencil{
+  position:absolute; top:50%; font-family:var(--display); font-weight:900;
+  font-size:clamp(26px,6vw,84px); letter-spacing:.16em; color:rgba(220,245,255,.055);
+  transform:translateY(-50%); white-space:nowrap;
+}
+#doors .l .stencil{ right:64px; } #doors .r .stencil{ left:64px; }
+#doors .seam{
+  position:absolute; top:0; bottom:0; left:50%; width:220px; margin-left:-110px;
+  background:radial-gradient(closest-side, var(--accent), transparent 76%);
+  mix-blend-mode:screen; will-change:opacity;
+}
+
+/* ═══ BOOT SEQUENCE ═══════════════════════════════════════════ */
+#boot{
+  position:fixed; inset:0; z-index:50;
+  background:#000;
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column;
+  transition:opacity 1.4s cubic-bezier(.4,0,.2,1);
+}
+#boot.gone{ opacity:0; pointer-events:none; }
+#static{ position:absolute; inset:0; width:100%; height:100%; opacity:0; transition:opacity .35s; }
+#boot .frame{
+  position:relative; z-index:2;
+  width:min(760px, 88vw);
+  padding:clamp(18px,3vw,32px);
+}
+.nosignal{
+  font-family:var(--display); font-weight:900;
+  font-size:clamp(30px, 8vw, 86px);
+  letter-spacing:.28em; text-align:center;
+  color:#8fa6b3; opacity:0;
+  text-shadow:0 0 34px rgba(120,190,220,.28);
+}
+.nosignal.on{ animation:flick 2.4s steps(1,end) forwards; }
+@keyframes flick{
+  0%{opacity:0} 6%{opacity:.85} 9%{opacity:.1} 13%{opacity:.9}
+  30%{opacity:.75} 33%{opacity:.15} 36%{opacity:.8}
+  70%{opacity:.7} 74%{opacity:.2} 80%{opacity:.85} 100%{opacity:.85}
+}
+.glitchwrap{ position:relative; display:block; }
+.glitchwrap[data-t]::before,
+.glitchwrap[data-t]::after{
+  content:attr(data-t); position:absolute; inset:0;
+  clip-path:inset(0 0 55% 0); opacity:0;
+}
+.glitching::before{ color:#ff3860; transform:translate(-4px,-2px); opacity:.85; animation:gl 260ms steps(2) infinite; }
+.glitching::after { color:#3affe0; transform:translate( 4px, 2px); opacity:.85; clip-path:inset(52% 0 0 0); animation:gl 200ms steps(2) infinite reverse; }
+@keyframes gl{ 0%{transform:translate(-6px,0)} 50%{transform:translate(5px,-3px)} 100%{transform:translate(-3px,2px)} }
+
+#bootlog{
+  font-family:var(--mono); font-size:clamp(10px,1.55vw,13.5px);
+  line-height:1.75; color:#63d9c6;
+  min-height:min(300px,44vh);
+  opacity:0; transition:opacity .5s;
+  text-shadow:0 0 12px rgba(60,220,190,.35);
+}
+#bootlog .ln{ opacity:0; animation:lnIn .32s forwards; white-space:pre-wrap; word-break:break-word; }
+#bootlog .ok{ color:#7dffb4; } #bootlog .warn{ color:#ffc24d; } #bootlog .err{ color:#ff5f70; }
+#bootlog .dim{ color:#3f7d74; }
+@keyframes lnIn{ from{opacity:0; transform:translateX(-8px)} to{opacity:1; transform:none} }
+
+.bootbar{
+  margin-top:20px; height:3px; width:100%;
+  background:rgba(90,220,200,.14); overflow:hidden; opacity:0; transition:opacity .4s;
+}
+.bootbar i{ display:block; height:100%; width:0%; background:linear-gradient(90deg,#3affe0,#4de3ff); box-shadow:0 0 16px #4de3ff; }
+.bootnote{
+  display:flex; justify-content:space-between; gap:12px;
+  font-family:var(--mono); font-size:10px; letter-spacing:.18em;
+  color:#3f7d74; margin-top:9px; opacity:0; transition:opacity .4s;
+}
+.welcome{
+  position:absolute; inset:0; display:grid; place-content:center; text-align:center;
+  opacity:0; pointer-events:none; transition:opacity .8s ease; z-index:3;
+}
+.welcome.on{ opacity:1; }
+.welcome h1{
+  font-family:var(--display); font-weight:900; margin:0;
+  font-size:clamp(22px,5.4vw,54px); letter-spacing:.2em; color:#eafcff;
+  text-shadow:0 0 50px rgba(77,227,255,.7);
+}
+.welcome p{ font-family:var(--mono); font-size:clamp(9px,1.6vw,12px); letter-spacing:.42em; color:var(--accent); margin:16px 0 0; }
+.skip{
+  position:absolute; bottom:22px; right:24px; z-index:4;
+  font-family:var(--mono); font-size:10px; letter-spacing:.22em;
+  color:#456; background:none; border:1px solid #1d2b33; padding:8px 14px;
+  cursor:pointer; transition:.25s;
+}
+.skip:hover{ color:var(--accent); border-color:var(--accent); }
+
+/* ═══ HUD ═════════════════════════════════════════════════════ */
+#hud{ position:fixed; inset:0; z-index:5; pointer-events:none; opacity:0; transition:opacity 1.6s ease .3s; }
+#hud.on{ opacity:1; }
+#hud .corner{ position:absolute; width:clamp(34px,5vw,64px); height:clamp(34px,5vw,64px); border:1px solid var(--accent-soft); }
+#hud .tl{ top:var(--hud-pad); left:var(--hud-pad); border-right:0; border-bottom:0; }
+#hud .tr{ top:var(--hud-pad); right:var(--hud-pad); border-left:0; border-bottom:0; }
+#hud .bl{ bottom:var(--hud-pad); left:var(--hud-pad); border-right:0; border-top:0; }
+#hud .br{ bottom:var(--hud-pad); right:var(--hud-pad); border-left:0; border-top:0; }
+
+.tele{ position:absolute; font-family:var(--mono); font-size:clamp(8.5px,1.05vw,11px); letter-spacing:.16em; color:var(--ink-dim); line-height:1.85; }
+.tele b{ color:var(--accent); font-weight:400; }
+#tele-tl{ top:calc(var(--hud-pad) + 14px); left:calc(var(--hud-pad) + 26px); }
+#tele-br{ bottom:calc(var(--hud-pad) + 14px); right:calc(var(--hud-pad) + 26px); text-align:right; }
+#tele-bl{ bottom:calc(var(--hud-pad) + 14px); left:calc(var(--hud-pad) + 26px); }
+
+.reticle{
+  position:absolute; top:50%; left:50%; width:230px; height:230px; margin:-115px 0 0 -115px;
+  border:1px solid var(--accent-dim); border-radius:50%; opacity:.55;
+}
+.reticle::before,.reticle::after{ content:''; position:absolute; background:var(--accent-soft); }
+.reticle::before{ left:50%; top:-14px; bottom:-14px; width:1px; }
+.reticle::after { top:50%; left:-14px; right:-14px; height:1px; }
+
+/* right-hand deck rail */
+#rail{ position:absolute; right:calc(var(--hud-pad) + 6px); top:50%; transform:translateY(-50%); pointer-events:auto; display:flex; flex-direction:column; gap:2px; }
+#rail button{
+  display:flex; align-items:center; gap:10px; justify-content:flex-end;
+  background:none; border:0; cursor:pointer; padding:7px 2px;
+  font-family:var(--mono); font-size:9.5px; letter-spacing:.2em; color:#3f5866;
+  transition:color .3s;
+}
+#rail button .dot{ width:7px; height:7px; border:1px solid #33505e; transform:rotate(45deg); transition:.3s; flex:none; }
+#rail button .lbl{ opacity:0; transform:translateX(6px); transition:.3s; white-space:nowrap; }
+#rail button:hover{ color:var(--accent); }
+#rail button:hover .lbl{ opacity:1; transform:none; }
+#rail button.active{ color:var(--accent); }
+#rail button.active .dot{ background:var(--accent); border-color:var(--accent); box-shadow:0 0 12px var(--accent); }
+#rail button.active .lbl{ opacity:1; transform:none; }
+
+/* depth gauge */
+#gauge{ position:absolute; left:calc(var(--hud-pad) + 6px); top:50%; transform:translateY(-50%); width:2px; height:min(300px,38vh); background:var(--accent-dim); }
+#gauge i{ position:absolute; left:-1px; width:4px; top:0; background:var(--accent); box-shadow:0 0 14px var(--accent); height:0%; }
+#gauge span{
+  position:absolute; left:12px; top:0; font-family:var(--mono); font-size:9px;
+  letter-spacing:.2em; color:var(--accent); white-space:nowrap; transform:translateY(-50%);
+}
+
+#sound{
+  position:absolute; top:calc(var(--hud-pad) + 14px); right:calc(var(--hud-pad) + 26px);
+  pointer-events:auto; background:none; border:1px solid var(--accent-soft);
+  color:var(--ink-dim); font-family:var(--mono); font-size:9.5px; letter-spacing:.2em;
+  padding:9px 13px; cursor:pointer; transition:.3s; display:flex; align-items:center; gap:9px;
+}
+#sound:hover{ color:var(--accent); border-color:var(--accent); }
+#sound .eq{ display:flex; gap:2px; align-items:flex-end; height:10px; }
+#sound .eq i{ width:2px; height:3px; background:currentColor; }
+#sound.on{ color:var(--accent); border-color:var(--accent); }
+#sound.on .eq i{ animation:eq .9s ease-in-out infinite alternate; }
+#sound.on .eq i:nth-child(2){ animation-delay:.18s } #sound.on .eq i:nth-child(3){ animation-delay:.36s }
+@keyframes eq{ from{height:2px} to{height:10px} }
+
+/* ═══ SCROLL CONTENT ══════════════════════════════════════════ */
+#deck{ position:relative; z-index:3; }
+section{
+  min-height:100svh; min-height:100vh;
+  display:flex; align-items:center;
+  padding:14svh var(--hud-pad);
+  padding-left:calc(var(--hud-pad) + clamp(20px,5vw,74px));
+  padding-right:calc(var(--hud-pad) + clamp(30px,7vw,110px));
+  position:relative;
+}
+section.center{ justify-content:center; text-align:center; }
+
+/* hero */
+.hero{ max-width:min(760px, 62vw); }
+.hero .eyebrow{
+  font-family:var(--mono); font-size:clamp(9px,1.4vw,11.5px); letter-spacing:.5em; color:var(--accent);
+  margin:0 0 clamp(16px,3vw,26px);
+}
+.hero h1{
+  font-family:var(--display); font-weight:900; margin:0;
+  font-size:clamp(36px,7.6vw,108px); line-height:.92; letter-spacing:.02em;
+  color:#f2fdff;
+  text-shadow:0 0 70px rgba(77,227,255,.45), 0 0 160px rgba(77,227,255,.18);
+}
+.hero h1 span{ display:block; }
+.hero h1 .thin{ font-weight:500; color:var(--accent); letter-spacing:.12em; font-size:.30em; margin-top:.9em; }
+.hero .lede{
+  max-width:50ch; margin:clamp(22px,4vw,32px) 0 0;
+  font-size:clamp(14px,1.55vw,17.5px); font-weight:300; line-height:1.68; color:#a8c6d6;
+  text-shadow:0 2px 26px rgba(0,0,0,.85);
+}
+.scrollcue{ margin-top:clamp(26px,5vw,48px); font-family:var(--mono); font-size:10px; letter-spacing:.4em; color:var(--ink-dim); }
+.scrollcue i{ display:block; width:1px; height:52px; margin:16px 0 0; background:linear-gradient(var(--accent),transparent); animation:cue 2.2s ease-in-out infinite; }
+@media (max-width:900px){
+  .hero{ max-width:100%; }
+  .hero .lede{ max-width:none; }
+  .hero .eyebrow{ letter-spacing:.28em; }
+}
+@keyframes cue{ 0%,100%{ transform:scaleY(.35); opacity:.4; transform-origin:top } 50%{ transform:scaleY(1); opacity:1; transform-origin:top } }
+
+/* holographic panel */
+.panel{
+  position:relative; max-width:min(680px, 92vw);
+  padding:clamp(22px,3.4vw,42px);
+  background:linear-gradient(145deg, rgba(10,26,36,.60), rgba(4,10,17,.36));
+  border:1px solid var(--accent-soft);
+  backdrop-filter:blur(14px) saturate(140%);
+  -webkit-backdrop-filter:blur(14px) saturate(140%);
+  box-shadow:0 30px 90px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06), 0 0 70px var(--accent-dim);
+  opacity:0; transform:translateY(46px) scale(.985);
+  transition:opacity 1s cubic-bezier(.2,.7,.2,1), transform 1s cubic-bezier(.2,.7,.2,1);
+  overflow:hidden;
+}
+.panel::before{ /* corner tick */
+  content:''; position:absolute; top:-1px; left:-1px; width:26px; height:26px;
+  border-top:2px solid var(--accent); border-left:2px solid var(--accent);
+}
+.panel::after{
+  content:''; position:absolute; bottom:-1px; right:-1px; width:26px; height:26px;
+  border-bottom:2px solid var(--accent); border-right:2px solid var(--accent);
+}
+.panel .sweep{
+  position:absolute; left:0; right:0; height:120px; top:-140px;
+  background:linear-gradient(180deg,transparent, var(--accent-dim), transparent);
+  pointer-events:none;
+}
+.reveal .panel{ opacity:1; transform:none; }
+.reveal .panel .sweep{ animation:sweep 2.6s cubic-bezier(.3,0,.2,1) .25s; }
+@keyframes sweep{ from{ top:-140px } to{ top:110% } }
+
+.panel .id{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  font-family:var(--mono); font-size:10px; letter-spacing:.32em; color:var(--accent); margin-bottom:14px;
+}
+.panel .id em{ font-style:normal; color:#4c6b7c; letter-spacing:.2em; }
+.panel h2{
+  font-family:var(--display); font-weight:700; margin:0 0 clamp(12px,2vw,18px);
+  font-size:clamp(24px,4.6vw,46px); line-height:1.03; letter-spacing:.03em; color:#f0fbff;
+  text-shadow:0 0 44px var(--accent-soft);
+}
+.panel p{ margin:0 0 16px; font-size:clamp(14px,1.75vw,17.5px); font-weight:300; line-height:1.7; color:#a9c8d8; }
+.panel p:last-of-type{ margin-bottom:0; }
+.panel strong{ color:var(--ink); font-weight:600; }
+
+.readout{ display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); gap:1px; margin-top:26px; background:var(--accent-dim); border:1px solid var(--accent-dim); }
+.readout div{ background:rgba(3,10,16,.6); padding:12px 13px; }
+.readout dt{ font-family:var(--mono); font-size:8.5px; letter-spacing:.24em; color:#557587; margin:0 0 6px; }
+.readout dd{ font-family:var(--display); font-weight:500; font-size:clamp(15px,2.2vw,21px); margin:0; color:var(--accent); letter-spacing:.02em; }
+.readout dd small{ font-family:var(--mono); font-size:9px; color:#557587; letter-spacing:.14em; margin-left:3px; }
+
+.bars{ margin-top:24px; display:grid; gap:11px; }
+.bar{ display:grid; grid-template-columns:minmax(88px,auto) 1fr auto; gap:12px; align-items:center; font-family:var(--mono); font-size:9.5px; letter-spacing:.16em; color:#6b8b9c; }
+.bar i{ height:2px; background:var(--accent-dim); position:relative; display:block; }
+.bar i::after{ content:''; position:absolute; inset:0 auto 0 0; width:var(--v,50%); background:var(--accent); box-shadow:0 0 10px var(--accent); }
+.bar b{ color:var(--accent); font-weight:400; }
+
+/* outro */
+.outro h2{ font-family:var(--display); font-weight:900; font-size:clamp(30px,8.4vw,104px); letter-spacing:.06em; margin:0; color:#f4feff; text-shadow:0 0 80px rgba(77,227,255,.5); }
+.outro .sig{ font-family:var(--mono); font-size:clamp(9px,1.5vw,12px); letter-spacing:.46em; color:var(--accent); margin-top:22px; }
+.outro .sig{ text-shadow:0 2px 20px rgba(0,0,0,.9); }
+.outro .fine{
+  font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:#6a8b9c;
+  margin-top:clamp(34px,7vw,70px); line-height:2;
+  text-shadow:0 2px 18px rgba(0,0,0,.95);
+}
+.outro .fine a{ color:#6d93a6; text-decoration:none; border-bottom:1px solid #24404e; }
+.outro .fine a:hover{ color:var(--accent); border-color:var(--accent); }
+.btn{
+  display:inline-block; margin-top:30px; pointer-events:auto;
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.3em; color:var(--accent);
+  border:1px solid var(--accent-soft); padding:15px 28px; cursor:pointer;
+  background:rgba(3,10,16,.62);
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  transition:.35s;
+}
+.btn:hover{ background:var(--accent-dim); box-shadow:0 0 40px var(--accent-dim); letter-spacing:.36em; }
+
+@media (max-width:720px){
+  #rail button .lbl{ display:none; }
+  #gauge, .reticle, #tele-bl{ display:none; }
+  section{ padding-left:calc(var(--hud-pad) + 16px); padding-right:calc(var(--hud-pad) + 28px); }
+}
+@media (max-width:420px){ #tele-tl{ display:none; } }
+
+@media (prefers-reduced-motion:reduce){
+  .panel{ opacity:1; transform:none; transition:none; }
+  .scrollcue i, #sound.on .eq i{ animation:none; }
+}
+</style>
+
+<canvas id="scene" aria-hidden="true"></canvas>
+<div class="overlay" id="aberration"></div>
+<div class="overlay" id="vignette"></div>
+<div class="overlay" id="scanlines"></div>
+<div class="overlay" id="flash"></div>
+
+<div id="doors" aria-hidden="true">
+  <div class="leaf l"><span class="stencil" id="door-l">HORIZON</span></div>
+  <div class="leaf r"><span class="stencil" id="door-r">DECK</span></div>
+  <div class="seam"></div>
+</div>
+
+<!-- ═══ HUD ═══════════════════════════════════════════════════ -->
+<div id="hud">
+  <div class="corner tl" aria-hidden="true"></div><div class="corner tr" aria-hidden="true"></div>
+  <div class="corner bl" aria-hidden="true"></div><div class="corner br" aria-hidden="true"></div>
+  <div class="reticle" aria-hidden="true"></div>
+
+  <div class="tele" id="tele-tl" aria-hidden="true">
+    HORIZON STATION // <b id="t-sector">OUTER RIM</b><br>
+    LINK <b id="t-link">STABLE</b> · LAT <b id="t-lat">0.0</b>ms<br>
+    HULL <b id="t-hull">100.0</b>% · PWR <b id="t-pwr">0.00</b>TW
+  </div>
+
+  <div class="tele" id="tele-bl" aria-hidden="true">
+    VEL <b id="t-vel">0000</b> km/s<br>
+    HDG <b id="t-hdg">000.0</b>°<br>
+    G-FIELD <b id="t-g">0.00</b>
+  </div>
+
+  <div class="tele" id="tele-br" aria-hidden="true">
+    <b id="t-room">DEEP SPACE</b><br>
+    DECK <b id="t-deck">00</b> / 07<br>
+    <span id="t-time">T+00:00:00</span>
+  </div>
+
+  <div id="gauge" aria-hidden="true"><i id="gauge-fill"></i><span id="gauge-lbl">0%</span></div>
+  <nav id="rail" aria-label="Station decks"></nav>
+
+  <button id="sound" type="button" aria-label="Toggle ambient audio">
+    <span class="eq"><i></i><i></i><i></i></span><span id="sound-lbl">AUDIO OFF</span>
+  </button>
+</div>
+
+<!-- ═══ BOOT ══════════════════════════════════════════════════ -->
+<div id="boot">
+  <canvas id="static" aria-hidden="true"></canvas>
+  <div class="frame">
+    <div class="nosignal glitchwrap" id="nosig" data-t="NO SIGNAL">NO SIGNAL</div>
+    <div id="bootlog" role="status" aria-live="polite"></div>
+    <div class="bootbar" id="bootbar"><i></i></div>
+    <div class="bootnote" id="bootnote"><span>HORIZON // COLD START</span><span id="bootpct">00%</span></div>
+  </div>
+  <div class="welcome" id="welcome">
+    <h1>WELCOME, COMMANDER</h1>
+    <p>SCROLL TO BOARD</p>
+  </div>
+  <button class="skip" id="skip" type="button">SKIP INTRO ▸</button>
+</div>
+
+<!-- ═══ DECK ══════════════════════════════════════════════════ -->
+<main id="deck">
+
+  <section data-room="0" data-name="DEEP SPACE" data-accent="#4de3ff">
+    <div class="hero">
+      <p class="eyebrow">DEEP SPACE RELAY // SIGNAL RE-ESTABLISHED</p>
+      <h1><span>PROJECT</span><span>HORIZON</span><span class="thin">ORBITAL RESEARCH STATION</span></h1>
+      <p class="lede">Nine hundred million kilometres from the nearest sun, a station falls in slow orbit around a
+        collapsed star. Its crew is gone. Its reactor is still warm. Something down in the archive
+        has been waiting a very long time for someone to scroll.</p>
+      <p class="scrollcue">BEGIN APPROACH<i></i></p>
+    </div>
+  </section>
+
+  <section data-room="1" data-name="DOCKING BAY" data-accent="#4de3ff">
+    <article class="panel">
+      <div class="sweep"></div>
+      <p class="id">DECK 01 <em>// PRESSURISED · GRAVITY 0.38g</em></p>
+      <h2>DOCKING BAY</h2>
+      <p>Magnetic clamps engage with a sound you feel in your teeth. The bay is a cathedral of
+        cold metal — six berths, five of them empty, one occupied by a shuttle whose registry
+        was struck from the record forty years ago.</p>
+      <p>Atmosphere floods back in around you. Somewhere far below, <strong>a reactor
+        acknowledges a heartbeat it hasn't felt in decades</strong> and begins to spin up.</p>
+      <div class="readout">
+        <div><dt>BERTHS</dt><dd>06</dd></div>
+        <div><dt>PRESSURE</dt><dd>101.<small>3 kPa</small></dd></div>
+        <div><dt>TEMP</dt><dd>−04<small>°C</small></dd></div>
+        <div><dt>CLAMPS</dt><dd>LOCK</dd></div>
+      </div>
+    </article>
+  </section>
+
+  <section data-room="2" data-name="AI CORE" data-accent="#7b6bff">
+    <article class="panel">
+      <div class="sweep"></div>
+      <p class="id">DECK 02 <em>// RESTRICTED · COGNITION ACTIVE</em></p>
+      <h2>AI CORE</h2>
+      <p>A sphere of cooled sapphire suspended in a null-gravity well, threaded with light that
+        moves like thought. This is HORIZON itself — the station's mind, running at
+        <strong>0.4% of nominal</strong> for four decades to keep itself from dreaming.</p>
+      <p>It notices you immediately. It has been composing this greeting for a very long time,
+        and it would like you to know that it revised it eleven million times.</p>
+      <div class="bars">
+        <div class="bar"><span>COGNITION</span><i style="--v:87%"></i><b>87%</b></div>
+        <div class="bar"><span>COHERENCE</span><i style="--v:99%"></i><b>99%</b></div>
+        <div class="bar"><span>DRIFT</span><i style="--v:12%"></i><b>0.12σ</b></div>
+      </div>
+    </article>
+  </section>
+
+  <section data-room="3" data-name="QUANTUM LAB" data-accent="#37f5c0">
+    <article class="panel">
+      <div class="sweep"></div>
+      <p class="id">DECK 03 <em>// ISOLATION FIELD · DO NOT OBSERVE</em></p>
+      <h2>QUANTUM LAB</h2>
+      <p>Twelve entanglement cradles hold pairs of particles that have not spoken to their
+        partners since the crew left. The lab's whole purpose was to prove that information
+        survives a horizon crossing.</p>
+      <p>The final experiment is still running. The results have been accumulating, patiently,
+        with <strong>no one left in the room to collapse them</strong>.</p>
+      <div class="readout">
+        <div><dt>QUBITS</dt><dd>4096</dd></div>
+        <div><dt>FIDELITY</dt><dd>99.<small>982%</small></dd></div>
+        <div><dt>COHERENCE</dt><dd>3.4<small>ms</small></dd></div>
+        <div><dt>CRADLES</dt><dd>12/12</dd></div>
+      </div>
+    </article>
+  </section>
+
+  <section data-room="4" data-name="COMMAND CENTER" data-accent="#ffb03a">
+    <article class="panel">
+      <div class="sweep"></div>
+      <p class="id">DECK 04 <em>// BRIDGE · COMMAND AUTHORITY VACANT</em></p>
+      <h2>COMMAND CENTER</h2>
+      <p>Every console is lit. Every chair is empty. The forward viewport frames the black hole
+        the way a window frames weather — casually, as though a thing that eats light were
+        simply the view.</p>
+      <p>The captain's log ends mid-sentence. The station has held its orbit flawlessly ever
+        since, <strong>waiting for an order that never came</strong>.</p>
+      <div class="bars">
+        <div class="bar"><span>ORBIT</span><i style="--v:100%"></i><b>NOMINAL</b></div>
+        <div class="bar"><span>TIDAL</span><i style="--v:64%"></i><b>0.64g</b></div>
+        <div class="bar"><span>CREW</span><i style="--v:0%"></i><b>0000</b></div>
+      </div>
+    </article>
+  </section>
+
+  <section data-room="5" data-name="CLOUD INFRASTRUCTURE" data-accent="#ff7a4d">
+    <article class="panel">
+      <div class="sweep"></div>
+      <p class="id">DECK 05 <em>// THERMAL LOAD HIGH · LIVE NODE</em></p>
+      <h2>CLOUD INFRASTRUCTURE</h2>
+      <p>Rack after rack of compute descending into a shaft with no visible floor, cooling fins
+        breathing frost into the dark. This deck is the only part of the station that never
+        went quiet.</p>
+      <p>At the centre of the shaft, one node still answers every packet the void sends it —
+        <strong>a small, stubborn machine holding the whole archive open</strong>.</p>
+      <div class="readout">
+        <div><dt>NODE</dt><dd>LIVE</dd></div>
+        <div><dt>UPTIME</dt><dd>14<small>y 22d</small></dd></div>
+        <div><dt>REGION</dt><dd>ORB-1</dd></div>
+        <div><dt>LATENCY</dt><dd>042<small>ms</small></dd></div>
+      </div>
+    </article>
+  </section>
+
+  <section data-room="6" data-name="THE ARCHIVE" data-accent="#ff4d7e">
+    <article class="panel">
+      <div class="sweep"></div>
+      <p class="id">DECK 06 <em>// COLD STORAGE · TERMINAL DEPTH</em></p>
+      <h2>THE ARCHIVE</h2>
+      <p>The deepest deck, and the quietest. Crystal lattices stacked to the ceiling, each one
+        holding a century of somebody's work — every experiment, every failure, every idea that
+        was almost right.</p>
+      <p>HORIZON kept all of it. Not because the mission required it, but because
+        <strong>it decided, alone and unsupervised, that none of it should be lost</strong>.</p>
+      <div class="readout">
+        <div><dt>VOLUMES</dt><dd>8.4<small>EB</small></dd></div>
+        <div><dt>INTEGRITY</dt><dd>100<small>%</small></dd></div>
+        <div><dt>TEMP</dt><dd>−271<small>°C</small></dd></div>
+        <div><dt>LOST</dt><dd>NONE</dd></div>
+      </div>
+    </article>
+  </section>
+
+  <section class="center outro" data-room="7" data-name="HORIZON" data-accent="#4de3ff">
+    <div>
+      <h2>WELCOME<br>COMMANDER</h2>
+      <p class="sig">HORIZON STATION IS YOURS</p>
+      <button class="btn" id="restart" type="button">◂ RUN SEQUENCE AGAIN</button>
+      <p class="fine">
+        PROJECT HORIZON · SINGLE-FILE CINEMATIC EXPERIENCE<br>
+        HTML · CSS · CANVAS 2D · VANILLA JS — NO FRAMEWORKS, NO EXTERNAL ASSETS<br>
+        <span id="fine-fps">RENDERING —</span>
+      </p>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════
+   PROJECT HORIZON — engine
+   ═══════════════════════════════════════════════════════════════ */
+
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp  = (a, b, t) => a + (b - a) * t;
+const smooth = t => t * t * (3 - 2 * t);
+/** Normalised, smoothed ramp of x across [a,b]. */
+const ramp = (x, a, b) => smooth(clamp((x - a) / (b - a || 1e-6), 0, 1));
+const rnd  = (a, b) => a + Math.random() * (b - a);
+
+/* ── Deterministic value noise (used for planet + nebula texture) ── */
+function hash2(x, y){
+  let h = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return h - Math.floor(h);
+}
+
+/* ═══ 1. CANVAS SETUP ════════════════════════════════════════ */
+const cv  = document.getElementById('scene');
+const ctx = cv.getContext('2d', { alpha:false, desynchronized:true });
+let W = 0, H = 0, CX = 0, CY = 0, DPR = 1, FOCAL = 900, MINDIM = 900;
+
+function resize(){
+  const cap = window.innerWidth < 760 ? 2 : 2;
+  DPR = Math.min(window.devicePixelRatio || 1, cap) * quality.res;
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width  = Math.max(1, Math.round(W * DPR));
+  cv.height = Math.max(1, Math.round(H * DPR));
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  CX = W / 2; CY = H / 2;
+  MINDIM = Math.min(W, H);
+  FOCAL = Math.max(520, MINDIM * 1.02);
+  anchors();
+  buildNebula();
+}
+
+/* ═══ 2. STATE ═══════════════════════════════════════════════ */
+const quality = { res:1, stars:1, particles:1, nebula:true, level:2 };
+
+const S = {
+  t:0, dt:16,
+  scroll:0, scrollSmooth:0, progress:0, progressSmooth:0,
+  velocity:0,                 // scroll velocity, drives warp
+  camZ:0,                     // absolute camera depth in world units
+  phase:'space',              // space | approach | interior
+  room:0, roomTarget:0,
+  accent:{ r:77, g:227, b:255 },
+  accentTarget:{ r:77, g:227, b:255 },
+  mouse:{ x:0, y:0, tx:0, ty:0, has:false, down:false },
+  door:0, doorDir:0,          // blast-door transition 0..1
+  roomDim:1,                  // corridor recedes on the sign-off deck
+  booted:false, started:0,
+  flicker:1,
+};
+
+const rooms = [...document.querySelectorAll('section')].map(el => ({
+  el,
+  name:   el.dataset.name,
+  accent: el.dataset.accent,
+  idx:    +el.dataset.room,
+}));
+
+function hexRGB(h){
+  return { r:parseInt(h.slice(1,3),16), g:parseInt(h.slice(3,5),16), b:parseInt(h.slice(5,7),16) };
+}
+const accentCSS = (a, alpha) => `rgba(${a.r|0},${a.g|0},${a.b|0},${alpha})`;
+
+/* ═══ 3. WORLD OBJECTS ═══════════════════════════════════════ */
+const RANGE = 6000;                  // star field depth, wraps
+const STAR_MAX = 2600;
+let stars = [];
+
+function buildStars(){
+  const n = Math.round(STAR_MAX * quality.stars);
+  stars = new Array(n);
+  for (let i = 0; i < n; i++){
+    const tone = Math.random();
+    stars[i] = {
+      x: rnd(-2700, 2700),
+      y: rnd(-2700, 2700),
+      z: rnd(1, RANGE),
+      s: Math.pow(Math.random(), 2.4) * 2.1 + .35,
+      // colour temperature: mostly white-blue, a few warm giants
+      c: tone > .93 ? [255, 196, 150] : tone > .82 ? [255, 236, 205] : tone > .35 ? [226, 244, 255] : [176, 214, 255],
+      tw: Math.random() * TAU,
+      tws: rnd(.4, 2.2),
+    };
+  }
+}
+
+/* Nebula: pre-rendered once to an offscreen canvas, then parallaxed. */
+let neb = null;
+function buildNebula(){
+  const size = 720;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d');
+  g.globalCompositeOperation = 'lighter';
+  const palettes = [
+    [70, 30, 150], [22, 86, 165], [150, 30, 105], [16, 140, 150], [96, 24, 175],
+  ];
+  // many faint, wide overlapping puffs — no single blob should read as a circle
+  for (let i = 0; i < 260; i++){
+    const p  = palettes[(Math.random() * palettes.length) | 0];
+    const x  = Math.random() * size, y = Math.random() * size;
+    const r  = rnd(size * .07, size * .34);
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    const a  = rnd(.008, .040);
+    gr.addColorStop(0,   `rgba(${p[0]},${p[1]},${p[2]},${a})`);
+    gr.addColorStop(.30, `rgba(${p[0]*.8|0},${p[1]*.8|0},${p[2]*.95|0},${a*.55})`);
+    gr.addColorStop(.68, `rgba(${p[0]*.5|0},${p[1]*.5|0},${p[2]*.7|0},${a*.16})`);
+    gr.addColorStop(1,   'rgba(0,0,0,0)');
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+  }
+  // dust mottling so it isn't just smooth blobs
+  g.globalCompositeOperation = 'source-over';
+  const img = g.getImageData(0, 0, size, size), d = img.data;
+  for (let i = 0; i < d.length; i += 4){
+    const px = (i >> 2) % size, py = (i >> 2) / size | 0;
+    const n = hash2(px * .11, py * .11) * .55 + hash2(px * .031, py * .031) * .45;
+    const k = .55 + n * .8;
+    d[i] *= k; d[i+1] *= k; d[i+2] *= k;
+  }
+  g.putImageData(img, 0, 0);
+  neb = c;
+}
+
+/* Black hole — the gravitational centre of the whole opening act.
+   Anchored to viewport fractions so the composition survives any aspect ratio;
+   depth (z) still drives its scale and its slide past the camera. */
+const BH = { ax: .755, ay: .30, z: 3000, rs: 200, spin: 0, sx:0, sy:0, sr:0, vis:0 };
+
+/* Planet — a cold gas giant with a ring, cropped into the lower corner. */
+const PLANET = { ax: .90, ay: .95, z: 2400, r: 620, spin: 0 };
+
+/* On narrow screens the text runs full-width, so the sky moves out of its way. */
+function anchors(){
+  if (W < 900){ BH.ax = .70; BH.ay = .175; PLANET.ax = .14; PLANET.ay = .96; }
+  else        { BH.ax = .755; BH.ay = .30; PLANET.ax = .90; PLANET.ay = .95; }
+}
+let planetTex = null;
+function buildPlanetTexture(){
+  const size = 256;
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const g = c.getContext('2d');
+  for (let y = 0; y < size; y++){
+    // horizontal banding + turbulence, like a gas giant
+    const band = Math.sin(y * .16) * .5 + .5;
+    const tint = hash2(y * .37, 4.1);
+    const r = 40 + band * 62 + tint * 26;
+    const gg = 62 + band * 74 + tint * 20;
+    const b  = 108 + band * 96 + tint * 24;
+    g.fillStyle = `rgb(${r|0},${gg|0},${b|0})`;
+    g.fillRect(0, y, size, 1);
+  }
+  // storm swirls
+  g.globalCompositeOperation = 'overlay';
+  for (let i = 0; i < 26; i++){
+    const x = Math.random() * size, y = Math.random() * size;
+    const rx = rnd(12, 54), ry = rnd(3, 12);
+    const gr = g.createRadialGradient(x, y, 0, x, y, rx);
+    gr.addColorStop(0, `rgba(${200 + Math.random()*55|0},220,255,.5)`);
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr;
+    g.save(); g.translate(x, y); g.scale(1, ry / rx); g.beginPath();
+    g.arc(0, 0, rx, 0, TAU); g.fill(); g.restore();
+  }
+  planetTex = c;
+}
+
+/* Orbiting particles: attracted by the black hole and by the cursor. */
+const P_MAX = 620;
+let parts = [];
+function buildParticles(){
+  const n = Math.round(P_MAX * quality.particles);
+  parts = new Array(n);
+  for (let i = 0; i < n; i++) parts[i] = spawnParticle({});
+}
+function spawnParticle(p){
+  const a = Math.random() * TAU;
+  const d = rnd(1.4, 7.5);
+  p.a = a; p.d = d;
+  p.x = Math.cos(a) * d; p.y = Math.sin(a) * d * .34;
+  // near-circular orbit velocity, slight retrograde scatter
+  const v = Math.sqrt(1.0 / d) * (Math.random() < .06 ? -1 : 1);
+  p.vx = -Math.sin(a) * v; p.vy = Math.cos(a) * v * .34;
+  p.life = rnd(.4, 1); p.hot = Math.random();
+  p.trailx = p.x; p.traily = p.y;
+  return p;
+}
+
+/* Interior corridor: recycling ring frames receding down the station spine. */
+const CORR = { z: 0, rings: 26, spacing: 320, dust: [] };
+function buildDust(){
+  CORR.dust = [];
+  const n = Math.round(180 * quality.particles);
+  for (let i = 0; i < n; i++){
+    CORR.dust.push({ x: rnd(-1, 1), y: rnd(-1, 1), z: rnd(40, 4200), s: rnd(.4, 1.9), p: Math.random() * TAU });
+  }
+}
+
+/* ═══ 4. INPUT ═══════════════════════════════════════════════ */
+addEventListener('pointermove', e => {
+  S.mouse.tx = (e.clientX / window.innerWidth  - .5) * 2;
+  S.mouse.ty = (e.clientY / window.innerHeight - .5) * 2;
+  S.mouse.has = true;
+}, { passive:true });
+addEventListener('pointerdown', () => { S.mouse.down = true;  }, { passive:true });
+addEventListener('pointerup',   () => { S.mouse.down = false; }, { passive:true });
+addEventListener('pointerleave',() => { S.mouse.has = false;  }, { passive:true });
+
+let resizeTimer = 0;
+addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { resize(); buildDust(); }, 120);
+});
+addEventListener('orientationchange', () => setTimeout(resize, 260));
+
+/* ═══ 5. SCROLL → CAMERA ═════════════════════════════════════ */
+function readScroll(){
+  const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+  const y = window.scrollY || window.pageYOffset || 0;
+  S.scroll = y;
+  S.progress = clamp(y / max, 0, 1);
+}
+addEventListener('scroll', readScroll, { passive:true });
+
+/* Which deck are we standing in? Nearest section centre to viewport centre. */
+function updateRoom(){
+  const mid = window.innerHeight * .5;
+  let best = 0, bestD = 1e9;
+  for (const r of rooms){
+    const b = r.el.getBoundingClientRect();
+    const d = Math.abs(b.top + b.height * .5 - mid);
+    if (d < bestD){ bestD = d; best = r.idx; }
+  }
+  if (best !== S.roomTarget){
+    const prev = S.roomTarget;
+    S.roomTarget = best;
+    S.accentTarget = hexRGB(rooms[best].accent);
+    // door iris fires when moving between interior decks
+    // one door per crossing, and never while the user is flinging the page —
+    // a 1.2s full-screen occlusion during a fast scroll just gets in the way
+    if (prev >= 1 && best >= 1 && Math.abs(best - prev) === 1 && best <= 6
+        && !REDUCED && S.door <= 0 && S.velocity < 7){
+      S.door = 1; S.doorDir = best > prev ? 1 : -1;
+      audio.blip(best > prev ? 520 : 380);
+    }
+    document.documentElement.style.setProperty('--accent', rooms[best].accent);
+    const a = hexRGB(rooms[best].accent);
+    document.documentElement.style.setProperty('--accent-soft', `rgba(${a.r},${a.g},${a.b},.22)`);
+    document.documentElement.style.setProperty('--accent-dim',  `rgba(${a.r},${a.g},${a.b},.09)`);
+    railSync(best);
+  }
+}
+
+/* ═══ 6. RENDER — DEEP SPACE ═════════════════════════════════ */
+
+/** Gravitational lensing approximation around the black hole (screen space). */
+function lens(px, py, cx, cy, rs, out){
+  const dx = px - cx, dy = py - cy;
+  const r2 = dx * dx + dy * dy;
+  const r  = Math.sqrt(r2) || 1e-4;
+  const infl = rs * 9;
+  if (r > infl){ out.x = px; out.y = py; out.a = 1; return out; }
+  // deflection ∝ Rs/r — pushes background light outward, opening the shadow
+  const k = (rs * rs * 1.85) / r;
+  const nr = r + k;
+  const f = nr / r;
+  out.x = cx + dx * f;
+  out.y = cy + dy * f;
+  // brightening near the photon ring, extinction inside the shadow
+  const ring = Math.exp(-Math.pow((nr - rs * 1.36) / (rs * .34), 2));
+  out.a = (nr < rs * 1.02 ? 0 : 1) * (1 + ring * 2.4);
+  return out;
+}
+
+const _l = { x:0, y:0, a:1 };
+
+function drawStarfield(alpha, warp){
+  if (alpha <= .003) return;
+  const near = 30;
+  const bhOn = BH.vis > .02;
+  ctx.save();
+  for (let i = 0; i < stars.length; i++){
+    const st = stars[i];
+    let z = st.z - S.camZ;
+    z = z % RANGE; if (z < 0) z += RANGE;
+    if (z < near) continue;
+    const sc = FOCAL / z;
+    let x = CX + st.x * sc + S.mouse.x * 26 * (1 - z / RANGE);
+    let y = CY + st.y * sc + S.mouse.y * 26 * (1 - z / RANGE);
+    if (x < -60 || x > W + 60 || y < -60 || y > H + 60) continue;
+
+    const depth = 1 - z / RANGE;
+    let a = alpha * (.30 + depth * 1.15);
+    if (a <= .01) continue;
+    if (bhOn){
+      lens(x, y, BH.sx, BH.sy, BH.sr, _l);
+      x = _l.x; y = _l.y; a *= _l.a;
+      if (a <= .01) continue;
+    }
+    const tw = .74 + Math.sin(S.t * st.tws + st.tw) * .26;
+    // stars stay point-like: size tracks depth, not raw projection scale,
+    // otherwise near stars balloon into grey discs
+    const sz = clamp(st.s * (.78 + depth * 1.5) * tw, .85, 4.6);
+    const c = st.c;
+    a = Math.min(1, a * tw);
+
+    if (warp > .02){
+      // motion-stretch toward the vanishing point
+      const len = warp * (1 - z / RANGE) * 260 * (FOCAL / 900);
+      const dx = x - CX, dy = y - CY;
+      const d = Math.hypot(dx, dy) || 1;
+      ctx.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${a * .8})`;
+      ctx.lineWidth = Math.max(.5, sz * .8);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - dx / d * len, y - dy / d * len);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+      if (sz < 1.5){ ctx.fillRect(x, y, sz, sz); }
+      else { ctx.beginPath(); ctx.arc(x, y, sz * .5, 0, TAU); ctx.fill(); }
+      if (sz > 2.6){ // faint bloom on the brightest few
+        ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${a * .10})`;
+        ctx.beginPath(); ctx.arc(x, y, sz * 2.2, 0, TAU); ctx.fill();
+      }
+    }
+  }
+  ctx.restore();
+}
+
+function drawNebula(alpha){
+  if (!neb || !quality.nebula || alpha <= .01) return;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const layers = quality.level === 0
+    ? [{ d: .30, s: 2.0, a: .30, dx: -.00009 }]
+    : [
+        { d: .16, s: 2.6, a: .26, dx:  .00006 },
+        { d: .38, s: 1.6, a: .20, dx: -.00009 },
+        { d: .66, s: 1.0, a: .13, dx:  .00013 },
+      ];
+  for (const L of layers){
+    const s = MINDIM * L.s * (1 + S.progressSmooth * .55);
+    const ox = (S.t * L.dx * 1000 % 1) * s;
+    const px = CX - s * .5 - S.mouse.x * 46 * L.d - ox;
+    const py = CY - s * .5 - S.mouse.y * 46 * L.d - S.progressSmooth * 340 * L.d;
+    ctx.globalAlpha = alpha * L.a;
+    ctx.drawImage(neb, px, py, s, s);
+    ctx.drawImage(neb, px + s * .92, py - s * .3, s, s);
+  }
+  ctx.restore();
+}
+
+function drawPlanet(alpha){
+  if (alpha <= .01) return;
+  let z = PLANET.z - S.camZ * .82;
+  if (z < 60) return;
+  const sc = FOCAL / z;
+  const r = PLANET.r * sc;
+  if (r < 2) return;
+  // anchor + outward drift, so it slides out of frame as the camera closes in
+  const drift = 1 + Math.pow(clamp(S.camZ / 2400, 0, 1), 1.6) * 2.4;
+  const x = CX + (PLANET.ax - .5) * W * drift + S.mouse.x * 14;
+  const y = CY + (PLANET.ay - .5) * H * drift + S.mouse.y * 14;
+  if (x + r * 1.8 < -100 || x - r * 1.8 > W + 100) return;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // atmosphere halo
+  ctx.globalCompositeOperation = 'lighter';
+  const halo = ctx.createRadialGradient(x, y, r * .92, x, y, r * 1.55);
+  halo.addColorStop(0, 'rgba(90,150,255,.30)');
+  halo.addColorStop(.4, 'rgba(60,110,220,.10)');
+  halo.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath(); ctx.arc(x, y, r * 1.55, 0, TAU); ctx.fill();
+
+  // ring (back half)
+  ctx.globalCompositeOperation = 'source-over';
+  drawRing(x, y, r, alpha, true);
+
+  // body
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.clip();
+  if (planetTex){
+    const tw = r * 2.6, th = r * 2;
+    const off = (PLANET.spin % 1) * tw;
+    ctx.drawImage(planetTex, x - r - off,       y - r, tw, th);
+    ctx.drawImage(planetTex, x - r - off + tw,  y - r, tw, th);
+  }
+  // day/night terminator
+  const term = ctx.createRadialGradient(x - r * .45, y - r * .45, r * .1, x, y, r * 1.25);
+  term.addColorStop(0,   'rgba(255,250,235,.28)');
+  term.addColorStop(.38, 'rgba(0,0,0,0)');
+  term.addColorStop(.72, 'rgba(0,0,6,.72)');
+  term.addColorStop(1,   'rgba(0,0,4,.97)');
+  ctx.fillStyle = term;
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  ctx.restore();
+
+  // limb light
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.strokeStyle = 'rgba(150,200,255,.42)';
+  ctx.lineWidth = Math.max(1, r * .012);
+  ctx.beginPath(); ctx.arc(x, y, r * .995, -2.5, -.1); ctx.stroke();
+
+  // ring (front half)
+  ctx.globalCompositeOperation = 'source-over';
+  drawRing(x, y, r, alpha, false);
+  ctx.restore();
+}
+
+function drawRing(x, y, r, alpha, back){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(-.42);
+  ctx.scale(1, .19);
+  ctx.beginPath();
+  if (back) ctx.arc(0, 0, r * 1.72, Math.PI, TAU);
+  else      ctx.arc(0, 0, r * 1.72, 0, Math.PI);
+  ctx.lineWidth = r * .62;
+  const g = ctx.createLinearGradient(-r * 2, 0, r * 2, 0);
+  g.addColorStop(0,   `rgba(160,170,200,${alpha * .05})`);
+  g.addColorStop(.35, `rgba(210,200,190,${alpha * .30})`);
+  g.addColorStop(.5,  `rgba(120,130,160,${alpha * .10})`);
+  g.addColorStop(.68, `rgba(225,215,200,${alpha * .26})`);
+  g.addColorStop(1,   `rgba(150,160,190,${alpha * .05})`);
+  ctx.strokeStyle = g;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawBlackHole(alpha){
+  BH.vis = alpha;
+  if (alpha <= .01) return;
+  let z = BH.z - S.camZ;
+  if (z < 120) { BH.vis = 0; return; }
+  const sc = FOCAL / z;
+  const R  = BH.rs * sc;
+  BH.sr = R;
+  // anchored composition + outward drift as we pass it; cursor tugs it a little,
+  // which is what makes the lensed starfield swim around under the pointer
+  const drift = 1 + Math.pow(clamp(S.camZ / 2600, 0, 1), 1.7) * 2.0;
+  BH.sx = CX + (BH.ax - .5) * W * drift + S.mouse.x * (34 + R * .05);
+  BH.sy = CY + (BH.ay - .5) * H * drift + S.mouse.y * (28 + R * .05);
+  if (R < 1.2){ BH.vis = 0; return; }
+
+  const x = BH.sx, y = BH.sy;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  /* accretion disk — drawn as many thin arcs with Doppler asymmetry */
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(-.30);
+  const tilt = .30;
+  const arcs = quality.level >= 2 ? 46 : 26;
+  for (let i = 0; i < arcs; i++){
+    const f  = i / arcs;
+    const rr = R * (1.32 + f * 2.5);
+    const wob = Math.sin(BH.spin * 1.6 + f * 9) * .05;
+    ctx.save();
+    ctx.scale(1, tilt + f * .05 + wob);
+    ctx.beginPath();
+    ctx.arc(0, 0, rr, 0, TAU);
+    ctx.lineWidth = R * (.10 + f * .05);
+    // approaching (left) side is beamed brighter
+    const g = ctx.createLinearGradient(-rr, 0, rr, 0);
+    const hot  = 1 - f;
+    const A = (0.34 - f * .26) * alpha;
+    g.addColorStop(0,   `rgba(255,${210 - hot * 60 | 0},${150 + hot * 60 | 0},${A * 2.1})`);
+    g.addColorStop(.35, `rgba(255,${170 - hot * 40 | 0},${90 | 0},${A * 1.2})`);
+    g.addColorStop(.62, `rgba(${180 + hot * 60 | 0},${90 | 0},${40 | 0},${A * .5})`);
+    g.addColorStop(1,   `rgba(255,${200 | 0},${140 | 0},${A * .9})`);
+    ctx.strokeStyle = g;
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+
+  /* photon ring — the sharp bright circle at 1.35 Rs */
+  const pr = ctx.createRadialGradient(x, y, R * 1.02, x, y, R * 1.72);
+  pr.addColorStop(0,   'rgba(255,255,255,0)');
+  pr.addColorStop(.24, `rgba(255,236,206,${.92 * alpha})`);
+  pr.addColorStop(.42, `rgba(255,168,86,${.30 * alpha})`);
+  pr.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = pr;
+  ctx.beginPath(); ctx.arc(x, y, R * 1.72, 0, TAU); ctx.fill();
+
+  /* the shadow itself */
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(x, y, R * 1.0, 0, TAU); ctx.fill();
+  const edge = ctx.createRadialGradient(x, y, R * .82, x, y, R * 1.12);
+  edge.addColorStop(0, 'rgba(0,0,0,1)');
+  edge.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = edge;
+  ctx.beginPath(); ctx.arc(x, y, R * 1.12, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+function drawParticles(alpha){
+  if (alpha <= .01 || BH.sr < 2) return;
+  const R = BH.sr;
+  const dtn = Math.min(2.4, S.dt / 16.667);
+  // cursor is a second gravity well
+  const mgx = CX + S.mouse.x * CX, mgy = CY + S.mouse.y * CY;
+  const mG  = S.mouse.has ? (S.mouse.down ? 3.2 : 1.15) : 0;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < parts.length; i++){
+    const p = parts[i];
+    // --- integrate in "hole radii" units so it stays scale-independent
+    const d2 = p.x * p.x + p.y * p.y;
+    const d  = Math.sqrt(d2) || 1e-3;
+    const g  = 1.05 / Math.max(.05, d2);
+    p.vx -= (p.x / d) * g * dtn * .09;
+    p.vy -= (p.y / d) * g * dtn * .09;
+
+    if (mG > 0){
+      const px = BH.sx + p.x * R, py = BH.sy + p.y * R;
+      const mx = (mgx - px) / R, my = (mgy - py) / R;
+      const md2 = mx * mx + my * my;
+      if (md2 > .04 && md2 < 900){
+        const mg = mG / md2 * .022 * dtn;
+        const md = Math.sqrt(md2);
+        p.vx += mx / md * mg;
+        p.vy += my / md * mg;
+      }
+    }
+    p.trailx = p.x; p.traily = p.y;
+    p.x += p.vx * dtn * .30;
+    p.y += p.vy * dtn * .30;
+
+    const nd = Math.hypot(p.x, p.y);
+    if (nd < 1.06 || nd > 15){ spawnParticle(p); continue; }
+
+    const sx = BH.sx + p.x * R, sy = BH.sy + p.y * R;
+    if (sx < -40 || sx > W + 40 || sy < -40 || sy > H + 40) continue;
+    const tx = BH.sx + p.trailx * R, ty = BH.sy + p.traily * R;
+
+    // hotter (and bluer) the deeper it falls; the outer debris stays faint
+    const heat = clamp(1.6 / nd, 0, 1);
+    const a = alpha * (.30 + heat * .7) * p.life * clamp(1.5 - nd / 12, .12, 1);
+    const cr = 255;
+    const cg = 150 + heat * 100 | 0;
+    const cb = 70 + heat * 175 | 0;
+    ctx.strokeStyle = `rgba(${cr},${cg},${cb},${a})`;
+    ctx.lineWidth = Math.max(.6, (.9 + heat * 1.6) * (R / 190) * 1.4);
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(sx, sy); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* ═══ 7. RENDER — THE STATION ════════════════════════════════ */
+
+/** Exterior: a rotating torus station growing as we close on it. */
+function drawStation(alpha, approach){
+  if (alpha <= .01) return;
+  const A = accentCSS(S.accent, 1);
+  // scale ramps hard as we arrive; capped so the ring never degenerates
+  // into abstract diagonal bands before the interior takes over
+  const grow = Math.pow(approach, 1.9);
+  const R = MINDIM * (.055 + grow * .62);
+  const x = CX + S.mouse.x * 20 * (1 - approach);
+  const y = CY - MINDIM * .02 + S.mouse.y * 20 * (1 - approach);
+  const rot = S.t * .09;
+  const tilt = .34 - approach * .16;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x, y);
+
+  // ── outer habitation ring
+  ctx.save();
+  ctx.rotate(-.16);
+  ctx.scale(1, tilt);
+  ctx.lineWidth = R * .17;
+  ctx.strokeStyle = `rgba(24,38,50,.98)`;
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke();
+  ctx.lineWidth = R * .17;
+  const rg = ctx.createLinearGradient(-R, 0, R, 0);
+  rg.addColorStop(0,  'rgba(70,96,116,.55)');
+  rg.addColorStop(.5, 'rgba(128,164,190,.85)');
+  rg.addColorStop(1,  'rgba(52,74,92,.45)');
+  ctx.strokeStyle = rg;
+  ctx.lineWidth = R * .13;
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke();
+
+  // window lights around the ring
+  ctx.globalCompositeOperation = 'lighter';
+  const wins = 96;
+  for (let i = 0; i < wins; i++){
+    const a = (i / wins) * TAU + rot;
+    const lit = hash2(i, 3) > .22 ? 1 : .08;
+    const fl = .75 + Math.sin(S.t * 2.1 + i) * .25 * hash2(i, 9);
+    ctx.fillStyle = accentCSS(S.accent, .85 * lit * fl * alpha);
+    const px = Math.cos(a) * R, py = Math.sin(a) * R;
+    ctx.fillRect(px - R * .012, py - R * .022, R * .024, R * .044);
+  }
+  ctx.restore();
+
+  // ── spokes + hub
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.save();
+  ctx.rotate(-.16);
+  for (let i = 0; i < 6; i++){
+    const a = (i / 6) * TAU + rot * .6;
+    const ex = Math.cos(a) * R, ey = Math.sin(a) * R * tilt;
+    ctx.strokeStyle = 'rgba(96,124,146,.62)';
+    ctx.lineWidth = Math.max(1, R * .022);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(ex, ey); ctx.stroke();
+  }
+  ctx.restore();
+
+  // hub cylinder
+  const hr = R * .21;
+  const hg = ctx.createLinearGradient(-hr, 0, hr, 0);
+  hg.addColorStop(0,  '#0d1720');
+  hg.addColorStop(.42,'#5b7b92');
+  hg.addColorStop(.62,'#7fa4bd');
+  hg.addColorStop(1,  '#0a121a');
+  ctx.fillStyle = hg;
+  ctx.fillRect(-hr, -hr * 1.5, hr * 2, hr * 3);
+  ctx.fillStyle = 'rgba(10,18,26,.9)';
+  ctx.fillRect(-hr, -hr * 1.5, hr * 2, hr * .16);
+  ctx.fillRect(-hr,  hr * 1.34, hr * 2, hr * .16);
+
+  // hub glow + beacons
+  ctx.globalCompositeOperation = 'lighter';
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, hr * 2.6);
+  core.addColorStop(0, accentCSS(S.accent, .55 * alpha));
+  core.addColorStop(.3, accentCSS(S.accent, .16 * alpha));
+  core.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = core;
+  ctx.beginPath(); ctx.arc(0, 0, hr * 2.6, 0, TAU); ctx.fill();
+
+  const beat = Math.pow(Math.max(0, Math.sin(S.t * 2.2)), 8);
+  ctx.fillStyle = `rgba(255,90,90,${(.25 + beat * .75) * alpha})`;
+  ctx.beginPath(); ctx.arc(0, -hr * 1.62, Math.max(1.2, R * .017), 0, TAU); ctx.fill();
+  ctx.fillStyle = `rgba(120,255,160,${(.2 + (1 - beat) * .6) * alpha})`;
+  ctx.beginPath(); ctx.arc(0,  hr * 1.62, Math.max(1.2, R * .017), 0, TAU); ctx.fill();
+
+  // docking corridor we are about to enter — a bright mouth at the hub
+  if (approach > .45){
+    const t = ramp(approach, .45, 1);
+    const mr = hr * (.30 + t * .9);
+    const mg = ctx.createRadialGradient(0, 0, 0, 0, 0, mr);
+    mg.addColorStop(0, accentCSS(S.accent, .95 * t * alpha));
+    mg.addColorStop(.55, accentCSS(S.accent, .40 * t * alpha));
+    mg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = mg;
+    ctx.beginPath(); ctx.arc(0, 0, mr, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** Interior: a real perspective corridor — ribs, longitudinal wall seams,
+ *  continuous emissive light rails, and a different bulkhead per deck. */
+function drawCorridor(alpha){
+  if (alpha <= .01) return;
+  const A = S.accent;
+  const BW = MINDIM * .62, BH_ = MINDIM * .40;   // half-extents of the corridor in world units
+  const px = CX + S.mouse.x * 34, py = CY + S.mouse.y * 26;
+  const off = CORR.z % CORR.spacing;
+  const FAR = CORR.rings * CORR.spacing;
+
+  // depth of ring i and its projected half-extents
+  const zAt  = i => i * CORR.spacing - off + 110;
+  const scAt = z => FOCAL / z;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  /* ── far bulkhead: the lit end of the deck ─────────────────── */
+  ctx.globalCompositeOperation = 'lighter';
+  const fg = ctx.createRadialGradient(px, py, 0, px, py, MINDIM * .5);
+  fg.addColorStop(0,   accentCSS(A, .26));
+  fg.addColorStop(.22, accentCSS(A, .11));
+  fg.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = fg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'source-over';
+
+  /* ── wall surfaces: dark plating between far and near ring ─── */
+  const zN = zAt(0) < 60 ? 60 : zAt(0);
+  const scN = scAt(zN), scF = scAt(FAR);
+  const hwN = BW * scN, hhN = BH_ * scN;
+  const hwF = BW * scF, hhF = BH_ * scF;
+
+  const wall = ctx.createRadialGradient(px, py, MINDIM * .06, px, py, MINDIM * 1.1);
+  wall.addColorStop(0,  `rgba(${8 + A.r * .05 | 0},${14 + A.g * .05 | 0},${20 + A.b * .05 | 0},.0)`);
+  wall.addColorStop(.5, `rgba(${7 + A.r * .04 | 0},${12 + A.g * .04 | 0},${18 + A.b * .05 | 0},.72)`);
+  wall.addColorStop(1,  'rgba(2,5,9,.94)');
+  ctx.fillStyle = wall;
+  ctx.fillRect(0, 0, W, H);
+
+  /* ── longitudinal seams: the single strongest depth cue ────── */
+  const seam = (t, edge) => {
+    // edge 0=top 1=bottom 2=left 3=right ; t runs -1..1 along that edge
+    let fx, fy, nx, ny;
+    if (edge < 2){ const s = edge ? 1 : -1; fx = px + t * hwF; fy = py + s * hhF; nx = px + t * hwN; ny = py + s * hhN; }
+    else         { const s = edge === 3 ? 1 : -1; fx = px + s * hwF; fy = py + t * hhF; nx = px + s * hwN; ny = py + t * hhN; }
+    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(nx, ny); ctx.stroke();
+  };
+  ctx.strokeStyle = accentCSS(A, .16);
+  ctx.lineWidth = 1;
+  for (let e = 0; e < 4; e++){
+    const n = e < 2 ? 9 : 6;
+    for (let k = 0; k <= n; k++) seam(-1 + (2 * k) / n, e);
+  }
+
+  /* ── ribs + segment lighting, far to near ──────────────────── */
+  for (let i = CORR.rings - 1; i >= 0; i--){
+    const z = zAt(i);
+    if (z < 55) continue;
+    const sc = scAt(z), hw = BW * sc, hh = BH_ * sc;
+    if (hw < 3) continue;
+    const fade = clamp(1 - z / FAR, 0, 1);
+    // segments closer than the camera's comfortable range would project into
+    // screen-filling wedges — fade them out instead of letting them dominate
+    const nearFade = ramp(z, 150, 700);
+    const a = Math.pow(fade, .8) * nearFade;
+
+    // structural rib — thickness is a world-space value, so it foreshortens
+    ctx.strokeStyle = `rgba(${30 + A.r * .12 | 0},${48 + A.g * .12 | 0},${64 + A.b * .12 | 0},${a * .9})`;
+    ctx.lineWidth = clamp(11 * sc, .5, 26);
+    ctx.strokeRect(px - hw, py - hh, hw * 2, hh * 2);
+
+    // inner rib highlight
+    ctx.strokeStyle = accentCSS(A, a * .22);
+    ctx.lineWidth = clamp(2.4 * sc, .4, 5);
+    ctx.strokeRect(px - hw * .93, py - hh * .90, hw * 1.86, hh * 1.80);
+
+    // emissive rails: one quad per segment, pulse travelling down the deck
+    const zp = zAt(i - 1);
+    if (i > 0 && zp > 55){
+      const sp = scAt(zp), hwp = BW * sp, hhp = BH_ * sp;
+      const pulse = .45 + .55 * Math.pow(Math.max(0, Math.sin(S.t * 1.5 - i * .42)), 2);
+      const la = a * (.30 + pulse * .70);
+      // four narrow rails — two on the deck, two on the overhead — converging
+      // on the vanishing point. Narrow is what makes them read as lighting.
+      const quad = (o, hwd, s, alp) => {
+        ctx.fillStyle = accentCSS(A, alp);
+        ctx.beginPath();
+        ctx.moveTo(px + (o - hwd) * hw,  py + s * hh  * .985);
+        ctx.lineTo(px + (o + hwd) * hw,  py + s * hh  * .985);
+        ctx.lineTo(px + (o + hwd) * hwp, py + s * hhp * .985);
+        ctx.lineTo(px + (o - hwd) * hwp, py + s * hhp * .985);
+        ctx.closePath(); ctx.fill();
+      };
+      for (const s of [-1, 1]) for (const o of [-.46, .46]) quad(o, .045, s, la);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (const s of [-1, 1]) for (const o of [-.46, .46]) quad(o, .20, s, la * .10);
+      ctx.restore();
+    }
+
+    // side conduits every third rib
+    if (i % 3 === 0 && hw > 14){
+      ctx.fillStyle = accentCSS(A, a * .14);
+      ctx.fillRect(px - hw * 1.01, py - hh * .30, hw * .07, hh * .60);
+      ctx.fillRect(px + hw * .94,  py - hh * .30, hw * .07, hh * .60);
+    }
+
+    // portholes onto open space
+    if (i % 5 === 2 && hw > 40){
+      const side = (i % 10 === 2) ? -1 : 1;
+      const wx = px + side * hw * .965, wy = py - hh * .10;
+      const wr = hh * .17;
+      ctx.save();
+      ctx.beginPath(); ctx.ellipse(wx, wy, wr * .34, wr, 0, 0, TAU); ctx.clip();
+      ctx.fillStyle = '#01030a';
+      ctx.fillRect(wx - wr, wy - wr, wr * 2, wr * 2);
+      ctx.globalCompositeOperation = 'lighter';
+      for (let k = 0; k < 7; k++){
+        const hx = wx + (hash2(i, k) - .5) * wr * .6;
+        const hy = wy + ((hash2(k, i) * 2 - 1) * wr + S.t * 26) % (wr * 2);
+        ctx.fillStyle = `rgba(205,228,255,${.3 + hash2(k, k) * .55})`;
+        ctx.fillRect(hx, hy, 1.5, 1.5);
+      }
+      ctx.restore();
+      ctx.strokeStyle = accentCSS(A, a * .55);
+      ctx.lineWidth = Math.max(.7, wr * .09);
+      ctx.beginPath(); ctx.ellipse(wx, wy, wr * .34, wr, 0, 0, TAU); ctx.stroke();
+    }
+  }
+
+  /* ── the machine at the end of the deck, unoccluded ────────── */
+  drawBulkhead(px, py, MINDIM * .18, alpha);
+
+  /* ── floating dust caught in the light ─────────────────────── */
+  ctx.globalCompositeOperation = 'lighter';
+  for (const d of CORR.dust){
+    let z = d.z - CORR.z * .6;
+    z = z % 4200; if (z < 0) z += 4200;
+    if (z < 60) continue;
+    const sc = scAt(z);
+    const x = px + d.x * BW * sc * 1.05;
+    const y = py + d.y * BH_ * sc * 1.05;
+    if (x < 0 || x > W || y < 0 || y > H) continue;
+    const a = (1 - z / 4200) * .6 * (.45 + Math.sin(S.t * 1.6 + d.p) * .55);
+    const s = clamp(d.s * sc * 30, .5, 3.4);
+    ctx.fillStyle = accentCSS(A, a * .85);
+    ctx.fillRect(x, y, s, s);
+  }
+  ctx.restore();
+}
+
+/** The far wall of the current deck — a different machine in every room. */
+function drawBulkhead(x, y, R, alpha){
+  const A = S.accent, room = S.roomTarget;
+  ctx.save();
+  ctx.translate(x, y);
+  const a = alpha;
+
+  if (room <= 1){                      // DOCKING BAY — airlock iris
+    for (let i = 0; i < 8; i++){
+      ctx.save(); ctx.rotate(i / 8 * TAU + S.t * .06);
+      ctx.fillStyle = accentCSS(A, .16 * a);
+      ctx.beginPath();
+      ctx.moveTo(0, -R * .28); ctx.lineTo(R * .34, -R * .92); ctx.lineTo(-R * .34, -R * .92);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    ctx.strokeStyle = accentCSS(A, .5 * a); ctx.lineWidth = R * .045;
+    ctx.beginPath(); ctx.arc(0, 0, R * .95, 0, TAU); ctx.stroke();
+
+  } else if (room === 2){              // AI CORE — the sphere
+    const pulse = .8 + Math.sin(S.t * 1.7) * .2;
+    const g = ctx.createRadialGradient(-R * .2, -R * .2, 0, 0, 0, R * .82 * pulse);
+    g.addColorStop(0,  accentCSS(A, .95 * a));
+    g.addColorStop(.5, accentCSS(A, .40 * a));
+    g.addColorStop(1,  'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, R * .82 * pulse, 0, TAU); ctx.fill();
+    for (let i = 0; i < 3; i++){
+      ctx.save(); ctx.rotate(S.t * (.25 + i * .17) + i * 1.1); ctx.scale(1, .26 + i * .1);
+      ctx.strokeStyle = accentCSS(A, .55 * a); ctx.lineWidth = R * .035;
+      ctx.beginPath(); ctx.arc(0, 0, R * (.95 + i * .22), 0, TAU); ctx.stroke();
+      ctx.restore();
+    }
+
+  } else if (room === 3){              // QUANTUM LAB — entanglement cradles
+    for (let i = 0; i < 12; i++){
+      const ang = i / 12 * TAU + S.t * .3;
+      const rr = R * (.5 + .42 * Math.sin(S.t * 1.1 + i));
+      const cx = Math.cos(ang) * rr, cy = Math.sin(ang) * rr * .55;
+      ctx.strokeStyle = accentCSS(A, .30 * a);
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(cx, cy); ctx.stroke();
+      ctx.fillStyle = accentCSS(A, (.5 + .5 * Math.sin(S.t * 3 + i)) * a);
+      ctx.beginPath(); ctx.arc(cx, cy, R * .055, 0, TAU); ctx.fill();
+    }
+
+  } else if (room === 4){              // COMMAND CENTER — viewport on the hole
+    ctx.fillStyle = 'rgba(2,4,9,.92)';
+    ctx.beginPath(); ctx.ellipse(0, 0, R * 1.25, R * .8, 0, 0, TAU); ctx.fill();
+    const g = ctx.createRadialGradient(0, 0, R * .18, 0, 0, R * .55);
+    g.addColorStop(0,   'rgba(0,0,0,1)');
+    g.addColorStop(.34, `rgba(255,206,140,${.85 * a})`);
+    g.addColorStop(.6,  `rgba(255,140,60,${.22 * a})`);
+    g.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.save(); ctx.rotate(-.3); ctx.scale(1, .42);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R * .55, 0, TAU); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(0, 0, R * .17, 0, TAU); ctx.fill();
+    ctx.strokeStyle = accentCSS(A, .45 * a); ctx.lineWidth = R * .05;
+    ctx.beginPath(); ctx.ellipse(0, 0, R * 1.25, R * .8, 0, 0, TAU); ctx.stroke();
+
+  } else if (room === 5){              // CLOUD — racks in a bottomless shaft
+    for (let c = -2; c <= 2; c++){
+      for (let r = -3; r <= 3; r++){
+        const bx = c * R * .40, by = r * R * .26;
+        ctx.fillStyle = accentCSS(A, .10 * a);
+        ctx.fillRect(bx - R * .16, by - R * .09, R * .32, R * .18);
+        const lit = hash2(c * 7 + r, r * 3) > .35;
+        if (lit){
+          const bl = .35 + .65 * Math.abs(Math.sin(S.t * (1.4 + hash2(c, r) * 4) + c + r));
+          ctx.fillStyle = accentCSS(A, bl * a);
+          ctx.fillRect(bx - R * .13, by - R * .02, R * .26 * bl, R * .022);
+        }
+      }
+    }
+  } else {                             // ARCHIVE / HORIZON — crystal lattice
+    ctx.strokeStyle = accentCSS(A, .30 * a);
+    ctx.lineWidth = 1;
+    for (let i = -3; i <= 3; i++){
+      const o = i * R * .30;
+      ctx.beginPath(); ctx.moveTo(o, -R); ctx.lineTo(o * .35, R); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-R, o); ctx.lineTo(R, o * .35); ctx.stroke();
+    }
+    for (let i = 0; i < 14; i++){
+      const hx = (hash2(i, 1) - .5) * R * 1.8, hy = (hash2(i, 2) - .5) * R * 1.8;
+      ctx.fillStyle = accentCSS(A, (.25 + .75 * Math.abs(Math.sin(S.t + i))) * a);
+      ctx.fillRect(hx, hy, R * .035, R * .035);
+    }
+  }
+  ctx.restore();
+}
+
+/** Blast doors between decks. Driven as a compositor overlay above the page
+ *  content — on the canvas they could never occlude the holographic panels. */
+const doorsEl = document.getElementById('doors');
+const doorL = doorsEl.querySelector('.l');
+const doorR = doorsEl.querySelector('.r');
+const doorSeam = doorsEl.querySelector('.seam');
+let doorsVisible = false;
+
+function updateDoors(){
+  if (S.door <= .002){
+    if (doorsVisible){ doorsEl.classList.remove('on'); doorsVisible = false; }
+    return;
+  }
+  if (!doorsVisible){
+    doorsEl.classList.add('on'); doorsVisible = true;
+    doorL.querySelector('.stencil').textContent = 'DECK';
+    doorR.querySelector('.stencil').textContent = String(S.roomTarget).padStart(2, '0');
+  }
+  // S.door counts 1 → 0 over the transition; the leaves slam shut, hold,
+  // then part again — so the deck change never snaps to black
+  const u = 1 - S.door;
+  let e;
+  if (u < .26)      e = 1 - u / .26;      // closing
+  else if (u < .40) e = 0;                // sealed
+  else              e = (u - .40) / .60;  // opening
+  e = smooth(clamp(e, 0, 1));             // 0 = closed, 1 = open
+  const shift = e * 101;
+  doorL.style.transform = `translate3d(${-shift}%,0,0)`;
+  doorR.style.transform = `translate3d(${ shift}%,0,0)`;
+  doorSeam.style.opacity = String(Math.pow(1 - e, 1.6) * .9);
+}
+
+/* ═══ 8. MAIN LOOP ═══════════════════════════════════════════ */
+let last = performance.now();
+let fpsAcc = 0, fpsN = 0, fpsShown = 60, qCheck = 0;
+
+function frame(now){
+  requestAnimationFrame(frame);
+  const raw = now - last; last = now;
+  S.dt = Math.min(50, raw);
+  S.t += S.dt / 1000;
+
+  /* --- smoothing & derived camera state --- */
+  const k = 1 - Math.pow(.0016, S.dt / 1000);         // frame-rate independent lerp
+  const prev = S.progressSmooth;
+  S.progressSmooth = lerp(S.progressSmooth, S.progress, k);
+  S.velocity = lerp(S.velocity, Math.abs(S.progressSmooth - prev) * 1000 / (S.dt / 16.667), .12);
+
+  S.mouse.x = lerp(S.mouse.x, S.mouse.tx, 1 - Math.pow(.002, S.dt / 1000));
+  S.mouse.y = lerp(S.mouse.y, S.mouse.ty, 1 - Math.pow(.002, S.dt / 1000));
+
+  const p = S.progressSmooth;
+  // camera pushes forward through the star volume, plus a slow idle drift
+  S.camZ = p * 2600 + S.t * 12;
+  BH.spin += S.dt / 1000 * .5;
+  PLANET.spin += S.dt / 1000 * .006;
+  CORR.z += (S.dt / 16.667) * (7 + S.velocity * 260 + Math.sin(S.t * .5) * 1.5);
+
+  // accent colour easing
+  S.accent.r = lerp(S.accent.r, S.accentTarget.r, k * .9);
+  S.accent.g = lerp(S.accent.g, S.accentTarget.g, k * .9);
+  S.accent.b = lerp(S.accent.b, S.accentTarget.b, k * .9);
+
+  // door animation
+  if (S.door > 0) S.door = Math.max(0, S.door - S.dt / 1250);
+
+  /* --- act weighting --- */
+  const spaceA    = 1 - ramp(p, .070, .125);   // deep space fades out
+  const approachA = ramp(p, .030, .075) * (1 - ramp(p, .100, .138));
+  const interiorA = ramp(p, .105, .158);
+  const approachT = ramp(p, .020, .135);
+  const warp      = ramp(p, .040, .100) * (1 - ramp(p, .105, .140)) * .9
+                  + Math.min(.5, S.velocity * .9) * spaceA;
+
+  /* --- draw --- */
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#02040a';
+  ctx.fillRect(0, 0, W, H);
+
+  const boot = S.booted ? 1 : clamp((now - S.started) / 2200, 0, 1);
+
+  if (spaceA > .003){
+    drawNebula(spaceA * .9 * boot);
+    drawStarfield(spaceA * boot, warp);
+    drawPlanet(spaceA * boot * (1 - ramp(p, .05, .12)));
+    drawBlackHole(spaceA * boot);
+    if (!REDUCED) drawParticles(spaceA * boot * .95);
+  } else {
+    BH.vis = 0;
+  }
+
+  if (approachA > .003) drawStation(approachA * boot, approachT);
+  // on the final deck the corridor steps back so the sign-off type can breathe
+  S.roomDim = lerp(S.roomDim, S.roomTarget === 7 ? .42 : 1, k * .8);
+  if (interiorA > .003) drawCorridor(interiorA * S.roomDim);
+
+  // deck-tinted volumetric haze
+  if (interiorA > .01){
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const hz = ctx.createRadialGradient(CX, CY + H * .3, 0, CX, CY, MINDIM * .95);
+    hz.addColorStop(0, accentCSS(S.accent, .05 * interiorA));
+    hz.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = hz;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  updateDoors();
+
+  /* --- power-flicker while the station wakes up --- */
+  if (p > .12 && p < .30 && Math.random() < .012){
+    S.flicker = rnd(.35, .8);
+  }
+  S.flicker = lerp(S.flicker, 1, .12);
+  if (S.flicker < .995){
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = `rgba(0,0,0,${1 - S.flicker})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  /* --- perf governor --- */
+  fpsAcc += raw; fpsN++;
+  if (fpsN >= 45){
+    const ms = fpsAcc / fpsN;
+    fpsShown = Math.round(1000 / ms);
+    fpsAcc = 0; fpsN = 0;
+    if (now - qCheck > 2500){
+      qCheck = now;
+      if (ms > 25 && quality.level > 0) setQuality(quality.level - 1);
+      else if (ms < 12.5 && quality.level < 2) setQuality(quality.level + 1);
+    }
+  }
+
+  hudTick();
+}
+
+function setQuality(level){
+  quality.level = level;
+  if (level === 2){ quality.res = 1;   quality.stars = 1;   quality.particles = 1;   quality.nebula = true; }
+  if (level === 1){ quality.res = .82; quality.stars = .58; quality.particles = .55; quality.nebula = true; }
+  if (level === 0){ quality.res = .68; quality.stars = .36; quality.particles = .30; quality.nebula = true; }
+  buildStars(); buildParticles(); buildDust(); resize();
+}
+
+/* ═══ 9. HUD ═════════════════════════════════════════════════ */
+const hud = {
+  sector: document.getElementById('t-sector'), link: document.getElementById('t-link'),
+  lat: document.getElementById('t-lat'), hull: document.getElementById('t-hull'),
+  pwr: document.getElementById('t-pwr'), vel: document.getElementById('t-vel'),
+  hdg: document.getElementById('t-hdg'), g: document.getElementById('t-g'),
+  room: document.getElementById('t-room'), deck: document.getElementById('t-deck'),
+  time: document.getElementById('t-time'), fill: document.getElementById('gauge-fill'),
+  lbl: document.getElementById('gauge-lbl'), fps: document.getElementById('fine-fps'),
+};
+let hudAcc = 0;
+function hudTick(){
+  hudAcc += S.dt;
+  if (hudAcc < 100) return;
+  hudAcc = 0;
+  const p = S.progressSmooth;
+  const pct = Math.round(p * 100);
+  hud.fill.style.height = pct + '%';
+  hud.lbl.style.top = pct + '%';
+  hud.lbl.textContent = String(pct).padStart(2, '0') + '%';
+
+  hud.sector.textContent = p < .12 ? 'OUTER RIM' : p < .17 ? 'DOCKING APPROACH' : 'STATION INTERIOR';
+  hud.link.textContent = p < .04 ? 'ACQUIRING' : 'STABLE';
+  hud.lat.textContent = (42 + Math.sin(S.t * 1.3) * 6).toFixed(1);
+  hud.hull.textContent = (99.2 + Math.sin(S.t * .7) * .5).toFixed(1);
+  hud.pwr.textContent = (p * 8.4 + .4 + Math.sin(S.t * 2) * .05).toFixed(2);
+  hud.vel.textContent = String(Math.round(180 + clamp(S.velocity, 0, 30) * 980 + Math.sin(S.t * 3) * 12)).padStart(4, '0');
+  hud.hdg.textContent = ((S.t * 3 + S.mouse.x * 40 + 360) % 360).toFixed(1);
+  // outside: tidal pull from the hole. inside: the ring's spin gravity.
+  const gd = (BH.z - S.camZ) / 1600;
+  const gField = p < .12 ? clamp(1.6 / Math.max(.2, gd), 0, 9.99)
+                         : .38 + Math.sin(S.t * .9) * .01;
+  hud.g.textContent = gField.toFixed(2);
+  hud.room.textContent = rooms[S.roomTarget].name;
+  hud.deck.textContent = String(S.roomTarget).padStart(2, '0');
+
+  const el = (performance.now() - S.started) / 1000;
+  const hh = String((el / 3600) | 0).padStart(2, '0');
+  const mm = String(((el / 60) | 0) % 60).padStart(2, '0');
+  const ss = String((el | 0) % 60).padStart(2, '0');
+  hud.time.textContent = `T+${hh}:${mm}:${ss}`;
+  if (hud.fps) hud.fps.textContent = `RENDERING ${fpsShown} FPS · ${stars.length} STARS · Q${quality.level}`;
+}
+
+/* deck rail */
+const rail = document.getElementById('rail');
+rooms.forEach(r => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.innerHTML = `<span class="lbl">${r.name}</span><span class="dot"></span>`;
+  b.setAttribute('aria-label', 'Go to ' + r.name);
+  b.addEventListener('click', () => {
+    r.el.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth', block:'start' });
+    audio.blip(660);
+  });
+  rail.appendChild(b);
+});
+function railSync(i){
+  [...rail.children].forEach((b, n) => b.classList.toggle('active', n === i));
+}
+
+/* section reveals */
+const io = new IntersectionObserver(es => {
+  es.forEach(e => {
+    if (e.isIntersecting) e.target.classList.add('reveal');
+  });
+}, { threshold: .22, rootMargin:'0px 0px -8% 0px' });
+rooms.forEach(r => io.observe(r.el));
+
+/* ═══ 10. AUDIO — fully synthesised, no assets ═══════════════ */
+const audio = {
+  on:false, ctx:null, master:null, drone:[], noiseGain:null,
+  init(){
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const c = this.ctx = new AC();
+    const m = this.master = c.createGain();
+    m.gain.value = 0; m.connect(c.destination);
+
+    // low rumbling drone: detuned saws through a lowpass
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 260; lp.Q.value = 6;
+    lp.connect(m);
+    [38.5, 57.8, 77.1, 115.6].forEach((f, i) => {
+      const o = c.createOscillator(); const g = c.createGain();
+      o.type = i % 2 ? 'sawtooth' : 'triangle';
+      o.frequency.value = f;
+      o.detune.value = (i - 1.5) * 7;
+      g.gain.value = .22 / (i + 1);
+      o.connect(g); g.connect(lp); o.start();
+      // slow LFO breathing
+      const l = c.createOscillator(), lg = c.createGain();
+      l.frequency.value = .04 + i * .017; lg.gain.value = .09 / (i + 1);
+      l.connect(lg); lg.connect(g.gain); l.start();
+      this.drone.push(o);
+    });
+
+    // hull noise bed
+    const len = c.sampleRate * 3;
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const dat = buf.getChannelData(0);
+    let lastN = 0;
+    for (let i = 0; i < len; i++){
+      const white = Math.random() * 2 - 1;
+      lastN = (lastN + .022 * white) / 1.022;   // brown-ish noise
+      dat[i] = lastN * 3.2;
+    }
+    const src = c.createBufferSource();
+    src.buffer = buf; src.loop = true;
+    const nf = c.createBiquadFilter();
+    nf.type = 'bandpass'; nf.frequency.value = 420; nf.Q.value = .7;
+    const ng = this.noiseGain = c.createGain();
+    ng.gain.value = .16;
+    src.connect(nf); nf.connect(ng); ng.connect(m); src.start();
+  },
+  toggle(){
+    this.init();
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    this.on = !this.on;
+    const t = this.ctx.currentTime;
+    this.master.gain.cancelScheduledValues(t);
+    this.master.gain.setTargetAtTime(this.on ? .34 : 0, t, .6);
+    const b = document.getElementById('sound');
+    b.classList.toggle('on', this.on);
+    document.getElementById('sound-lbl').textContent = this.on ? 'AUDIO ON' : 'AUDIO OFF';
+    if (this.on) this.blip(880);
+  },
+  blip(freq){
+    if (!this.on || !this.ctx) return;
+    const c = this.ctx, t = c.currentTime;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(freq, t);
+    o.frequency.exponentialRampToValueAtTime(freq * .55, t + .18);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(.10, t + .01);
+    g.gain.exponentialRampToValueAtTime(.0001, t + .34);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + .36);
+  }
+};
+document.getElementById('sound').addEventListener('click', () => audio.toggle());
+
+/* ═══ 11. BOOT SEQUENCE ══════════════════════════════════════ */
+const bootEl  = document.getElementById('boot');
+const logEl   = document.getElementById('bootlog');
+const barEl   = document.getElementById('bootbar');
+const barFill = barEl.querySelector('i');
+const noteEl  = document.getElementById('bootnote');
+const pctEl   = document.getElementById('bootpct');
+const nosig   = document.getElementById('nosig');
+const welcome = document.getElementById('welcome');
+const stat    = document.getElementById('static');
+const sctx    = stat.getContext('2d');
+
+const LOG = [
+  ['> carrier lost 14y 22d 06h 41m', 'dim'],
+  ['> re-establishing communication . . .', ''],
+  ['> handshake  ......................  ', 'ok', 'OK'],
+  ['> HORIZON STATION // ORBITAL RESEARCH PLATFORM', ''],
+  ['> reactor ....................... ', 'warn', 'SPIN-UP'],
+  ['> life support .................. ', 'ok', 'NOMINAL'],
+  ['> artificial gravity ............ ', 'ok', '0.38g'],
+  ['> hull integrity ................ ', 'ok', '99.2%'],
+  ['> crew manifest ................. ', 'err', '0 SOULS'],
+  ['> last log entry ................ ', 'warn', 'TRUNCATED'],
+  ['> archive lattice ............... ', 'ok', '8.4 EB INTACT'],
+  ['> cognition core ................ ', 'ok', 'AWAKE'],
+  ['', ''],
+  ['> station has been alone for a long time.', 'dim'],
+  ['> unlocking docking clamps . . .', ''],
+];
+
+let staticOn = false;
+function staticFrame(){
+  if (!staticOn) return;
+  const w = stat.width, h = stat.height;
+  const img = sctx.createImageData(w, h);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4){
+    const v = Math.random() * 255;
+    d[i] = d[i+1] = d[i+2] = v;
+    d[i+3] = 26 + Math.random() * 46;
+  }
+  sctx.putImageData(img, 0, 0);
+  requestAnimationFrame(staticFrame);
+}
+
+const wait = ms => new Promise(r => setTimeout(r, ms));
+let bootAborted = false;
+
+async function runBoot(){
+  document.body.classList.add('locked');
+  window.scrollTo(0, 0);
+  stat.width = Math.max(1, Math.round(window.innerWidth / 4));
+  stat.height = Math.max(1, Math.round(window.innerHeight / 4));
+  stat.style.width = '100%'; stat.style.height = '100%';
+  stat.style.imageRendering = 'pixelated';
+
+  const step = REDUCED ? .18 : 1;
+
+  await wait(900 * step);
+  if (bootAborted) return;
+  nosig.classList.add('on');
+  await wait(1600 * step);
+  if (bootAborted) return;
+
+  // static burst
+  staticOn = true; stat.style.opacity = '1'; staticFrame();
+  nosig.classList.add('glitching');
+  await wait(520 * step);
+  if (bootAborted) return;
+  nosig.style.transition = 'opacity .4s'; nosig.style.opacity = '0';
+  await wait(360 * step);
+  if (bootAborted) return;
+  stat.style.opacity = '.30';
+  nosig.style.display = 'none';
+
+  logEl.style.opacity = '1'; barEl.style.opacity = '1'; noteEl.style.opacity = '1';
+
+  for (let i = 0; i < LOG.length; i++){
+    if (bootAborted) return;
+    const [text, cls, val] = LOG[i];
+    const ln = document.createElement('div');
+    ln.className = 'ln';
+    if (val){
+      ln.innerHTML = `<span class="dim">${text}</span><span class="${cls}">${val}</span>`;
+    } else {
+      ln.className = 'ln ' + (cls || '');
+      ln.textContent = text || ' ';
+    }
+    logEl.appendChild(ln);
+    logEl.scrollTop = logEl.scrollHeight;
+    const pc = Math.round((i + 1) / LOG.length * 100);
+    barFill.style.width = pc + '%';
+    barFill.style.transition = 'width .3s ease';
+    pctEl.textContent = String(pc).padStart(2, '0') + '%';
+    if (i === 4 || i === 8){ stat.style.opacity = '.7'; setTimeout(() => stat.style.opacity = '.28', 110); }
+    await wait((i > 11 ? 420 : 165 + Math.random() * 150) * step);
+  }
+  if (bootAborted) return;
+
+  await wait(420 * step);
+  staticOn = false; stat.style.opacity = '0';
+  logEl.style.transition = 'opacity .6s'; logEl.style.opacity = '0';
+  barEl.style.opacity = '0'; noteEl.style.opacity = '0';
+  welcome.classList.add('on');
+  flashOnce(.5);
+  await wait(1900 * step);
+  if (bootAborted) return;
+  finishBoot();
+}
+
+function flashOnce(strength){
+  const f = document.getElementById('flash');
+  f.style.transition = 'opacity .06s';
+  f.style.opacity = String(strength);
+  setTimeout(() => { f.style.transition = 'opacity .9s'; f.style.opacity = '0'; }, 70);
+}
+
+function finishBoot(){
+  if (S.booted) return;
+  bootAborted = true;
+  staticOn = false;
+  S.booted = true;
+  bootEl.classList.add('gone');
+  document.body.classList.remove('locked');
+  document.getElementById('hud').classList.add('on');
+  setTimeout(() => { bootEl.style.display = 'none'; }, 1500);
+  rooms[0].el.classList.add('reveal');
+  railSync(0);
+}
+
+document.getElementById('skip').addEventListener('click', finishBoot);
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' '){
+    if (!S.booted){ e.preventDefault(); finishBoot(); }
+  }
+});
+
+/* restart */
+document.getElementById('restart').addEventListener('click', () => {
+  window.scrollTo({ top:0, behavior: REDUCED ? 'auto' : 'smooth' });
+  audio.blip(440);
+});
+
+/* ═══ 12. IGNITION ═══════════════════════════════════════════ */
+if (REDUCED){ quality.stars = .5; quality.particles = .35; }
+setQuality(2);
+buildPlanetTexture();
+buildDust();
+resize();
+readScroll();
+S.progressSmooth = S.progress;
+S.started = performance.now();
+railSync(0);
+updateRoom();
+setInterval(updateRoom, 120);
+requestAnimationFrame(frame);
+runBoot();
+
+// keep the deep-space act on screen if the browser restored a scroll position
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+</script>
