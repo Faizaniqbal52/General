@@ -57,6 +57,7 @@ class TailoredResume:
     experience: list[ResumeItem]
     publications: list[ResumeItem]
     education: list[dict[str, str]]
+    achievements: list[str] = field(default_factory=list)
     footnotes: list[str] = field(default_factory=list)
     excluded: list[str] = field(default_factory=list)
 
@@ -110,7 +111,8 @@ def _why(ev: Evidence, required: set[str], job_domains: set[str]) -> str:
 
 
 def _skill_groups(profile: Profile, required: set[str], every: set[str],
-                  include_unevidenced: bool) -> tuple[list[tuple[str, list[str]]], list[str]]:
+                  include_unevidenced: bool, per_group: int
+                  ) -> tuple[list[tuple[str, list[str]]], list[str]]:
     """Grouped, JD-ordered skill lines plus the list of skills held back."""
     groups: dict[str, list[tuple[float, str]]] = {}
     excluded: list[str] = []
@@ -133,9 +135,21 @@ def _skill_groups(profile: Profile, required: set[str], every: set[str],
         items = groups.get(category)
         if not items:
             continue
-        labels = [label for _, label in sorted(items, key=lambda pair: (-pair[0], pair[1].lower()))]
+        ordered = sorted(items, key=lambda pair: (-pair[0], pair[1].lower()))
+        labels = [label for _, label in ordered[:per_group]]
+        excluded.extend(f"{label} (trimmed - not relevant enough to this role)"
+                        for _, label in ordered[per_group:])
         out.append((CATEGORY_LABELS.get(category, category.title()), labels))
     return out, sorted(excluded)
+
+
+def _pick_achievements(profile: Profile, job_tokens: set[str], limit: int) -> list[str]:
+    """Recognition lines, the most relevant few, in the order you wrote them."""
+    if not profile.achievements:
+        return []
+    scored = [(len(_tokens(line) & job_tokens), line) for line in profile.achievements]
+    kept = {line for _, line in sorted(scored, key=lambda pair: -pair[0])[:limit]}
+    return [line for line in profile.achievements if line in kept]
 
 
 def _summary(profile: Profile, job: Job, assessment: Assessment | None,
@@ -154,6 +168,7 @@ def _summary(profile: Profile, job: Job, assessment: Assessment | None,
 
 def build_resume(profile: Profile, job: Job, assessment: Assessment | None = None,
                  *, max_projects: int = 4, max_highlights: int = 4,
+                 max_achievements: int = 4, max_skills_per_group: int = 8,
                  include_unevidenced_skills: bool = False) -> TailoredResume:
     required, every = _job_signal(job)
     job_tokens = _tokens(f"{job.title} {job.description}")
@@ -190,7 +205,8 @@ def build_resume(profile: Profile, job: Job, assessment: Assessment | None = Non
     if repos and len(projects) < max_projects:
         projects += repos
 
-    groups, excluded = _skill_groups(profile, required, every, include_unevidenced_skills)
+    groups, excluded = _skill_groups(profile, required, every, include_unevidenced_skills,
+                                     max_skills_per_group)
 
     headline = profile.headline or job.title
     contact = {"email": profile.email, "phone": profile.phone, "location": profile.location}
@@ -214,6 +230,7 @@ def build_resume(profile: Profile, job: Job, assessment: Assessment | None = Non
         experience=experience,
         publications=publications,
         education=[{str(k): str(v) for k, v in row.items()} for row in profile.education],
+        achievements=_pick_achievements(profile, job_tokens, max_achievements),
         footnotes=footnotes,
         excluded=excluded,
     )
@@ -245,6 +262,10 @@ def verify_resume(resume: TailoredResume, profile: Profile) -> None:
             if line not in ev.highlights and line not in first_sentence(ev.summary, 200):
                 raise ResumeIntegrityError(
                     f"highlight on '{ev.id}' does not appear in the profile: {line[:60]}")
+    for line in resume.achievements:
+        if line not in profile.achievements:
+            raise ResumeIntegrityError(f"achievement is not in the profile: {line[:60]}")
+
     if resume.summary and profile.narrative:
         stem = first_sentence(profile.narrative, 260) or profile.headline
         if stem and not resume.summary.startswith(stem):

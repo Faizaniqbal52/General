@@ -23,6 +23,7 @@ from jobpilot.store import Store
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "profile.example.yaml"
+REAL_PROFILE = ROOT / "profile.faizan.yaml"
 DEMO = ROOT / "examples" / "demo_jobs"
 
 
@@ -84,6 +85,15 @@ class ProfileTests(unittest.TestCase):
                            "evidence: [nope]}\n", encoding="utf-8")
             with self.assertRaises(ProfileError):
                 load_profile(bad)
+
+    def test_real_profile_loads_and_audits_clean(self):
+        from jobpilot.profile import audit
+        profile = load_profile(REAL_PROFILE)
+        self.assertEqual(audit(profile), [])
+        self.assertGreater(len(profile.evidence), 10)
+        self.assertTrue(profile.achievements)
+        self.assertEqual(profile.level_of("mt"), Level.STRONG)
+        self.assertEqual(profile.level_of("kubernetes"), Level.EXPLORATORY)
 
     def test_unevidenced_skill_is_discounted(self):
         profile = load_profile(PROFILE)
@@ -165,6 +175,18 @@ class ResumeTests(unittest.TestCase):
         resume.projects[0].highlights.append("Led a team of 20 engineers")
         with self.assertRaises(ResumeIntegrityError):
             verify_resume(resume, self.profile)
+
+    def test_achievements_come_from_the_profile(self):
+        profile = load_profile(REAL_PROFILE)
+        job = sample_job(description="Requirements\n- OCR, PyTorch, dataset engineering\n")
+        resume = build_resume(profile, job, assess(profile, job))
+        self.assertTrue(resume.achievements)
+        for line in resume.achievements:
+            self.assertIn(line, profile.achievements)
+        verify_resume(resume, profile)
+        resume.achievements.append("Nobel Prize, 2026")
+        with self.assertRaises(ResumeIntegrityError):
+            verify_resume(resume, profile)
 
     def test_renderers_produce_output(self):
         resume = build_resume(self.profile, self.job, self.assessment)

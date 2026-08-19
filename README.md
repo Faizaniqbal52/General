@@ -46,13 +46,19 @@ TensorFlow" because a JD asked for it is worse than useless.
 ```bash
 pip install -r requirements.txt          # PyYAML required; requests/openpyxl optional
 
+cp profile.faizan.yaml profile.yaml      # the real profile, built from the CVs
+python -m jobpilot audit                 # checks every evidence link resolves
+
 python -m jobpilot demo                  # full pipeline on the bundled sample jobs
 open out/demo/dashboard.html
-
-cp profile.example.yaml profile.yaml     # then edit it - this is the real work
-python -m jobpilot audit                 # checks every evidence link resolves
-python -m jobpilot run --offline --jobs examples/demo_jobs
 ```
+
+Two profiles ship with the repo. `profile.faizan.yaml` is the real one, assembled
+from the five CVs - KoshurAI, KoshurOCR, Koshur Diacritizer, the three arXiv
+preprints, PromptForge, Groopik, GSSoC and GetInterned, with honest levels
+(TensorFlow, Kubernetes, speech and RAG are all marked so they stay off resumes).
+`profile.example.yaml` is the blank-slate template if someone else wants to use
+this. Keep your working copy in `profile.yaml`, which is git-ignored.
 
 Once your profile is honest, point it at real feeds:
 
@@ -169,8 +175,10 @@ the searches to find a human.
 application package with copy buttons and a `mailto:` link. Single file, no network,
 works offline.
 
-`out/resumes/` - a tailored `.md` and print-ready `.html` per opportunity. Open the
-HTML and print to PDF.
+`out/resumes/` - a tailored `.md` and print-ready `.html` per opportunity, with
+summary, skills (ranked and trimmed to what the role cares about), experience,
+selected projects, publications, education and recognition. Open the HTML and print
+to PDF.
 
 `jobpilot.db` - every posting ever seen, so each run reports what is genuinely new,
 and your application statuses persist.

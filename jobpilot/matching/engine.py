@@ -13,7 +13,7 @@ from ..models import (
     Requirement, RequirementMatch,
 )
 from ..parsing.jd import job_domains
-from ..parsing.taxonomy import label_of
+from ..parsing.taxonomy import category_of, label_of
 
 # Partial credit between neighbouring skills. "I know PyTorch, not TensorFlow"
 # is a much smaller gap than "I have never trained a model".
@@ -32,7 +32,9 @@ ADJACENT: dict[str, dict[str, float]] = {
     "llm_finetuning": {"llm": 0.5, "pytorch": 0.4, "huggingface": 0.45},
     "llm": {"nlp": 0.5, "llm_finetuning": 0.6, "huggingface": 0.4},
     "nlp": {"llm": 0.5, "low_resource_nlp": 0.6, "deep_learning": 0.3},
-    "low_resource_nlp": {"nlp": 0.6, "llm": 0.35},
+    "low_resource_nlp": {"nlp": 0.6, "llm": 0.35, "mt": 0.5},
+    "mt": {"nlp": 0.55, "low_resource_nlp": 0.6, "llm": 0.4, "deep_learning": 0.3},
+    "cuda": {"pytorch": 0.4, "distributed_training": 0.4},
     "cv": {"ocr": 0.6, "deep_learning": 0.35, "multimodal": 0.4},
     "ocr": {"cv": 0.6, "document_ai": 0.5, "deep_learning": 0.3},
     "multimodal": {"cv": 0.45, "nlp": 0.4, "llm": 0.4},
@@ -296,9 +298,19 @@ def assess(profile: Profile, job: Job, company: Company | None = None,
         band = Band.A
     mode = choose_mode(job, company, has_posting)
 
-    strengths = [m.requirement.label for m in sorted(matches, key=lambda m: -m.score)
-                 if m.score >= 0.7][:6]
-    strengths += [d for d in overlap if d not in strengths][:2]
+    # among equally strong matches, lead with the specific ones: "Low-resource
+    # NLP" says more about you than "Python" does.
+    specificity = {"ml": 0, "ml_framework": 1, "research": 2, "software": 3,
+                   "language": 4, "soft": 5, "other": 3}
+    strengths = [m.requirement.label for m in sorted(
+        matches,
+        key=lambda m: (-m.score, -m.requirement.weight,
+                       specificity.get(category_of(m.requirement.skill), 3),
+                       m.requirement.label))
+        if m.score >= 0.7][:6]
+    # the shared problem space is the most persuasive thing you can lead with,
+    # so it goes in front of the individual skill matches
+    strengths = [d for d in overlap if d not in strengths][:2] + strengths
 
     gaps: list[str] = []
     for m in sorted(matches, key=lambda m: m.score):

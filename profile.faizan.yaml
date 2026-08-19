@@ -1,0 +1,349 @@
+# ---------------------------------------------------------------------------
+# Faizan Iqbal - master profile, built from the five CVs (Aug 2026).
+#
+# This is the file the agent speaks from. Every level below is a claim you will
+# have to defend in an interview, and every `evidence:` id must resolve to an
+# entry in projects / experience / publications / open_source / certifications.
+# Skills marked `exploratory`, or left without evidence, are scored lower and
+# are kept off tailored resumes on purpose.
+#
+#   cp profile.faizan.yaml profile.yaml      # working copy, git-ignored
+#   python -m jobpilot audit
+#
+# Things to check yourself before the first real run are marked  # CHECK
+# ---------------------------------------------------------------------------
+
+identity:
+  name: Faizan Iqbal
+  email: ifaizan041@gmail.com
+  phone: "+91-8492886552"          # CHECK: remove if this repo is public
+  location: "Bengaluru, India (open to relocate)"
+  headline: "AI Research Engineer - low-resource NLP, document AI and applied LLMs"
+  links:
+    website: https://herewithfaizan.in
+    github: https://github.com/Faizaniqbal52
+    huggingface: https://huggingface.co/Faizaniqbal
+    linkedin: https://linkedin.com/in/faizaniqbal52
+
+narrative: >
+  I build AI systems end to end for a language that had none. Kashmiri had no
+  neural translation model, no OCR dataset and no diacritiser, so I sourced and
+  verified the data myself, trained the models, and designed the evaluation
+  before trusting any result - three arXiv preprints, one as first author, and a
+  translation model that beats Meta's NLLB-200-distilled-600M on COMET in both
+  directions on a fraction of its data. When a model underperforms I look for the
+  real cause: on the OCR program that meant identifying decoder sequence collapse
+  rather than blaming encoder capacity, and redirecting eleven iterations of work
+  accordingly. I also ship production software - a live real-time platform with
+  real users, and an LLM orchestration tool that routes and evaluates across
+  providers. B.Tech CS student, graduating 2027, looking for teams building
+  serious AI systems for Indian languages and hard applied problems.
+
+education:
+  - degree: B.Tech
+    field: Computer Science and Engineering
+    institution: Lovely Professional University, Jalandhar
+    period: "Aug 2023 - Expected Jul 2027"
+    location: "Punjab, India"
+    notes: "CGPA 7.63 / 10"
+
+# ---------------------------------------------------------------------------
+# Evidence
+# ---------------------------------------------------------------------------
+
+projects:
+  - id: koshur_ai
+    name: "KoshurAI - neural machine translation for Kashmiri"
+    role: Creator and sole engineer
+    period: "2025 - present"
+    summary: >
+      The first specialised neural MT system for Kashmiri↔English, built from raw
+      data upward for a language with no prior neural MT solution.
+    highlights:
+      - "Two-stage fine-tune of Gemma 3 4B: LoRA rank 16 on monolingual and back-translated data to learn Nastaliq orthography, then QLoRA rank 32 on a 4-bit NF4 base for the translation task"
+      - "0.6982 COMET KS→EN and 0.6604 EN→KS on FLORES-200, against NLLB-200-distilled-600M's 0.6741 and 0.6431, on a fraction of its training data"
+      - "Built the full ETL pipeline myself - InPage document extraction, normalisation, alignment validation, deduplication, human verification - producing 150K+ verified parallel pairs and a 2M+ token monolingual corpus"
+      - "Stage-ordering ablations showed monolingual pre-training before the parallel fine-tune improved COMET by 0.03 over the reverse order"
+    skills: [python, pytorch, huggingface, llm_finetuning, mt, nlp, low_resource_nlp, evaluation, data_engineering, deep_learning]
+    domains: [indian_language_ai, low_resource_nlp, foundation_models]
+    metrics:
+      - "COMET 0.6982 (KS→EN) / 0.6604 (EN→KS) vs NLLB-200-distilled-600M 0.6741 / 0.6431"
+      - "150K+ human-verified parallel pairs · 2M+ token monolingual corpus"
+    links:
+      - https://github.com/Faizaniqbal52/KoshurAI
+      - https://huggingface.co/Faizaniqbal
+
+  - id: koshur_ocr
+    name: "KoshurOCR - multi-generation OCR program for Kashmiri Nastaliq"
+    role: Creator and sole engineer
+    period: "2025 - present"
+    summary: >
+      Five OCR architectures compared across ~11 experimental iterations on a
+      673K-sample image-text dataset, with the failure analysis that redirected
+      the whole program.
+    highlights:
+      - "Trained and benchmarked five architectures for Nastaliq OCR: CNN, CRNN+CTC, PARSeq, TrOCR and an Arabic-handwritten TrOCR variant"
+      - "Built deterministic preprocessing and dataset engineering producing 571K+ synthetic image-text pairs, training on 670K+ samples with Unicode normalisation, curriculum learning and aspect-ratio-preserving preprocessing"
+      - "Custom evaluation tooling on CER, WER, prediction coverage and decoder-length analysis showed the ceiling was decoder sequence collapse, not encoder capacity"
+      - "Redirected the program toward length-aware decoding objectives instead of continuing trial-and-error iteration"
+    skills: [python, pytorch, ocr, cv, deep_learning, data_engineering, evaluation, multimodal, opencv]
+    domains: [document_ai, indian_language_ai, computer_vision, low_resource_nlp]
+    metrics:
+      - "673K-sample dataset · 5 architectures · ~11 iterations"
+    links:
+      - https://github.com/Faizaniqbal52/KoshurOCR
+
+  - id: koshur_diacritizer
+    name: "Koshur Diacritizer - byte-level diacritic restoration"
+    role: Co-author and engineer
+    period: "2026"
+    summary: >
+      Kashmiri text omits diacritics, creating word-level ambiguity. Framed as
+      seq2seq and built on a byte-level model specifically to avoid the
+      out-of-vocabulary failures sub-word tokenizers hit on diacritics.
+    highlights:
+      - "ByT5-small byte-level seq2seq model reaching DERm 0.0212 and WER 0.2159"
+      - "77.5% accuracy under native-speaker expert evaluation - human-in-the-loop, not just automatic metrics"
+      - "Released the first public dataset of 23.7K aligned diacritised Kashmiri sentence pairs"
+    skills: [python, pytorch, huggingface, nlp, mt, low_resource_nlp, evaluation, deep_learning]
+    domains: [indian_language_ai, low_resource_nlp]
+    metrics: ["DERm 0.0212 · WER 0.2159 · 77.5% native-speaker accuracy"]
+    links:
+      - https://huggingface.co/Faizaniqbal
+
+  - id: promptforge
+    name: "PromptForge - multi-model LLM orchestration"
+    role: Creator
+    period: "Mar 2026"
+    summary: >
+      A deployed orchestration tool that routes requests between LLM providers by
+      task type and forces ambiguity out of a request before generation.
+    highlights:
+      - "Routes between Groq (Llama 3.3 70B) and Anthropic Claude Sonnet by task classification - rule-based by default with an LLM-as-router fallback for ambiguous requests"
+      - "Structured 3-5 question clarification loop that runs before generation, plus a sequential decomposition pipeline that breaks a complex build request into ordered, self-contained stages"
+      - "Evaluation framework comparing model outputs across task categories; voice-to-text input for hands-free requirement gathering"
+    skills: [python, typescript, javascript, llm, prompting, agents, frontend, backend, evaluation]
+    domains: [agentic_ai, devtools]
+    metrics: []
+    links:
+      - https://github.com/Faizaniqbal52/PromptForge
+
+  - id: groopik
+    name: "Groopik - live real-time media platform"
+    role: Creator, running in production
+    period: "Feb 2026 - present"
+    summary: >
+      A zero-signup real-time media sharing platform, live at groopik.com and used
+      at high-concurrency events.
+    highlights:
+      - "Next.js/TypeScript frontend with Supabase Realtime (PostgreSQL logical replication) for live gallery sync and room-scoped anonymous sessions"
+      - "Cloudflare R2 zero-egress storage with CDN caching so delivery cost stays flat regardless of traffic"
+      - "Fixed real production failure modes: stale-while-revalidate caching for R2-to-CDN propagation lag, client-side rate limiting for Realtime backpressure during upload bursts, chunked resumable uploads for unreliable event Wi-Fi"
+      - "Gathered requirements from real event organisers and iterated the feature set on production usage"
+    skills: [typescript, javascript, frontend, backend, sql, aws, cicd, system_design, docker]
+    domains: []
+    metrics: []
+    links:
+      - https://groopik.com
+      - https://github.com/Faizaniqbal52/groopik
+
+experience:
+  - id: gssoc_2026
+    name: GirlScript Summer of Code 2026
+    role: Open Source Contributor
+    period: "Feb 2026 - present"
+    summary: >
+      Contributing features to AI and agent-based open-source projects in a
+      collaborative team environment.
+    highlights:
+      - "Feature contributions to AI/agent open-source projects, working through code reviews and maintainer conventions"
+      - "Translating domain expertise into structured training-data contributions"
+    skills: [python, git, llm, agents, communication]
+    domains: []
+
+  - id: getinterned
+    name: GetInterned
+    role: Web Development Intern
+    period: "Nov 2025 - Dec 2025"
+    summary: Built responsive web interfaces for live client projects.
+    highlights:
+      - "Converted UI/UX designs into functional interactive features and delivered production interfaces on schedule"
+      - "Worked with stakeholders on requirements and participated in code reviews across iterative delivery cycles"
+    skills: [javascript, typescript, frontend, git, communication]
+    domains: []
+
+publications:
+  - id: koshur_pixel_paper
+    name: "Koshur Pixel: A Large-Scale Synthetic OCR Dataset for Kashmiri"
+    role: "Co-author (Malik, Iqbal, Nissar) · cs.CV, cs.CL"
+    period: "arXiv:2606.23144 · June 2026"
+    summary: >
+      The first large-scale synthetic OCR training dataset for Kashmiri Nastaliq.
+    highlights:
+      - "613,078 image-text pairs generated via SynthOCR-Gen with 25+ augmentation strategies across fonts, optical degradations, layout perturbations and textual granularities"
+    skills: [research, ocr, cv, data_engineering, writing, python]
+    domains: [document_ai, indian_language_ai, low_resource_nlp]
+    links: ["https://arxiv.org/abs/2606.23144"]
+
+  - id: koshur_diacritizer_paper
+    name: "Koshur Diacritizer: A Byte-Level Seq2Seq Model for Kashmiri Diacritic Restoration"
+    role: "Co-author (Malik, Nissar, Iqbal) · cs.CL, cs.AI"
+    period: "arXiv:2606.15883 · 2026"
+    summary: >
+      Byte-level diacritic restoration for Kashmiri, with national press coverage
+      (ETV Bharat).
+    highlights:
+      - "DERm 0.0212, WER 0.2159, 77.5% native-speaker expert accuracy; first public dataset of 23.7K aligned diacritised sentence pairs"
+    skills: [research, nlp, mt, low_resource_nlp, evaluation, writing]
+    domains: [indian_language_ai, low_resource_nlp]
+    links: ["https://arxiv.org/abs/2606.15883"]
+
+  - id: hazard_benchmark_paper
+    name: "Benchmarking Large Language Models on Multi-Sensor Physical Hazard Assessment"
+    role: "First author · cs.AI"
+    period: "arXiv:2607.20476 · 2026 (under review)"
+    summary: >
+      A benchmark for how frontier LLMs reason about physical hazard from
+      multi-sensor input.
+    highlights:
+      - "68-scenario benchmark evaluating 5 frontier LLMs, with a 4-axis rubric covering hazard accuracy, action correctness, over-/under-reaction bias and reasoning coherence"
+    skills: [research, llm, evaluation, writing, python]
+    domains: [foundation_models, agentic_ai]
+    links: ["https://arxiv.org/abs/2607.20476"]
+
+open_source:
+  - id: github_profile
+    name: "Public repositories"
+    role: Author and maintainer
+    period: "2023 - present"
+    summary: "Training code, dataset tooling, evaluation harnesses and shipped products, released publicly."
+    skills: [python, git, pytorch, writing]
+    links: ["https://github.com/Faizaniqbal52"]
+
+  - id: huggingface_profile
+    name: "Hugging Face models and datasets"
+    role: Author
+    period: "2025 - present"
+    summary: "Released Kashmiri translation and diacritisation models and datasets on the Hub."
+    skills: [huggingface, pytorch, mt, nlp]
+    domains: [indian_language_ai, low_resource_nlp]
+    links: ["https://huggingface.co/Faizaniqbal"]
+
+certifications:
+  - id: dsa_lpu
+    name: "Data Structures and Algorithms certification (LPU, 2025)"
+    role: ""
+    period: "2025"
+    summary: "Plus multi-stack development training in C++ and Java (2025)."
+    skills: [cpp, java]
+
+# ---------------------------------------------------------------------------
+# Skills - level + the evidence that backs it
+# ---------------------------------------------------------------------------
+skills:
+  # core AI/ML - all of this has shipped artefacts behind it
+  - {name: python,           level: strong,       evidence: [koshur_ai, koshur_ocr, koshur_diacritizer, promptforge, github_profile]}
+  - {name: pytorch,          level: strong,       evidence: [koshur_ai, koshur_ocr, koshur_diacritizer]}
+  - {name: huggingface,      level: strong,       evidence: [koshur_ai, koshur_diacritizer, huggingface_profile]}
+  - {name: deep_learning,    level: strong,       evidence: [koshur_ai, koshur_ocr, koshur_diacritizer]}
+  - {name: llm,              level: strong,       evidence: [koshur_ai, promptforge, hazard_benchmark_paper]}
+  - {name: llm_finetuning,   level: strong,       evidence: [koshur_ai]}
+  - {name: nlp,              level: strong,       evidence: [koshur_ai, koshur_diacritizer, koshur_diacritizer_paper]}
+  - {name: mt,               level: strong,       evidence: [koshur_ai, koshur_diacritizer]}
+  - {name: low_resource_nlp, level: strong,       evidence: [koshur_ai, koshur_ocr, koshur_diacritizer, koshur_pixel_paper]}
+  - {name: ocr,              level: strong,       evidence: [koshur_ocr, koshur_pixel_paper]}
+  - {name: cv,               level: strong,       evidence: [koshur_ocr, koshur_pixel_paper]}
+  - {name: evaluation,       level: strong,       evidence: [koshur_ai, koshur_ocr, hazard_benchmark_paper, koshur_diacritizer_paper]}
+  - {name: data_engineering, level: strong,       evidence: [koshur_ai, koshur_ocr, koshur_pixel_paper]}
+  - {name: research,         level: strong,       evidence: [koshur_pixel_paper, koshur_diacritizer_paper, hazard_benchmark_paper]}
+  - {name: writing,          level: strong,       evidence: [koshur_pixel_paper, koshur_diacritizer_paper, hazard_benchmark_paper]}
+  - {name: prompting,        level: strong,       evidence: [promptforge, hazard_benchmark_paper]}
+  - {name: multimodal,       level: intermediate, evidence: [koshur_ocr],
+     note: "image-text modelling via TrOCR/ViT encoders; no VLM training yet"}
+  - {name: agents,           level: intermediate, evidence: [promptforge, gssoc_2026],
+     note: "multi-model routing and clarification pipelines; no large LangGraph system in production"}
+  - {name: numpy,            level: strong,       evidence: [koshur_ai, koshur_ocr]}
+  - {name: opencv,           level: intermediate, evidence: [koshur_ocr]}
+  - {name: sklearn,          level: basic,        evidence: []}
+  - {name: mlops,            level: basic,        evidence: [koshur_ai],
+     note: "W&B experiment tracking and Hugging Face Hub deploys; no serving stack owned in production"}
+  - {name: cuda,             level: basic,        evidence: [koshur_ocr],
+     note: "trained on GPU and tuned throughput; not a CUDA kernel author"}
+  - {name: rag,              level: basic,        evidence: [],
+     note: "RAG assistant in progress - once it ships, add it as evidence and this becomes usable on resumes"}
+
+  # engineering - Groopik and PromptForge are live systems
+  - {name: typescript,       level: strong,       evidence: [groopik, promptforge, getinterned]}
+  - {name: javascript,       level: strong,       evidence: [groopik, promptforge, getinterned]}
+  - {name: frontend,         level: strong,       evidence: [groopik, promptforge, getinterned]}
+  - {name: backend,          level: intermediate, evidence: [groopik, promptforge]}
+  - {name: system_design,    level: intermediate, evidence: [groopik],
+     note: "real-time sync, CDN caching, backpressure and resumable uploads on a live platform"}
+  - {name: sql,              level: intermediate, evidence: [groopik]}
+  - {name: aws,              level: intermediate, evidence: [groopik],
+     note: "EC2, Lambda, S3 on a live product; no large-scale infrastructure ownership"}
+  - {name: cicd,             level: intermediate, evidence: [groopik]}
+  - {name: git,              level: strong,       evidence: [github_profile, gssoc_2026]}
+  - {name: docker,           level: basic,        evidence: [groopik]}
+  - {name: linux,            level: intermediate, evidence: [koshur_ocr]}
+  - {name: cpp,              level: intermediate, evidence: [dsa_lpu]}
+  - {name: c,                level: basic,        evidence: []}
+  - {name: java,             level: basic,        evidence: [dsa_lpu], note: "coursework and training only"}
+  - {name: ownership,        level: strong,       evidence: [koshur_ai, koshur_ocr, groopik]}
+  - {name: communication,    level: intermediate, evidence: [gssoc_2026, getinterned]}
+
+  # honest low end - these stay off resumes until there is evidence
+  - {name: tensorflow,       level: exploratory,  evidence: [], note: "familiar, no shipped project"}
+  - {name: speech,           level: exploratory,  evidence: [], note: "interested; no ASR/TTS project yet"}
+  - {name: kubernetes,       level: exploratory,  evidence: [], note: "never operated a cluster"}
+  - {name: distributed_training, level: exploratory, evidence: [], note: "single-node GPU work only"}
+
+achievements:
+  - "Rank #1 of 1,000+ participants, Xpecto'25, IIT Mandi; 3rd place, Prometeo'25, IIT Jodhpur"
+  - "University Representative, AI Impact Summit 2026 - presented 15 AI projects; national press (Brut India, ETV Bharat)"
+  - "ETV Bharat (June 2026): national coverage of the Kashmiri AI research (KoshurAI, Koshur Diacritizer)"
+  - "Outreach Head, RISC (LPU Tier-1 robotics club) - cross-functional partnerships including the Indian Army"
+  - "Runner-up, Project-O-Research, School of Computer Science, LPU; 30+ technical certificates from IITs, NITs and corporate programmes"
+  - "3× J&K State Wushu Champion; ISRO National Space Day writing competition winner"
+
+preferences:
+  roles:
+    - AI Research Engineer
+    - Research Engineer
+    - ML Engineer
+    - AI Engineer
+    - LLM Engineer
+    - NLP Engineer
+    - Computer Vision Engineer
+    - Applied Scientist
+    - Member of Technical Staff
+    - Founding Engineer
+    - Software Engineer
+    - AI/ML Intern
+    - Research Intern
+  locations: [Bengaluru, Hyderabad, Delhi NCR, Gurugram, Noida, Pune, Mumbai, Chennai, Remote, India]
+  remote_ok: true
+  onsite_ok: true
+  relocate_ok: true
+  employment_types: [full_time, internship, contract]
+  min_salary_lpa: null             # CHECK: set a floor once you want one
+  domains:
+    - indian_language_ai
+    - low_resource_nlp
+    - document_ai
+    - foundation_models
+    - agentic_ai
+    - computer_vision
+  avoid: [sales, marketing, "field engineer", "business development"]
+
+constraints:
+  graduation_year: 2027
+  # CHECK: counts the GetInterned internship, GSSoC and sustained applied research.
+  # Lower it to 0.5 for stricter scoring, raise it if you count the research years.
+  years_experience: 1.0
+  # Deliberately blank: the B.Tech is in progress until 2027, so roles that
+  # require a completed degree correctly cost a few eligibility points.
+  highest_degree: ""
+  work_authorization: [India]
+  notice_period_days: 0
+  willing_to_learn: [speech, distributed_training, kubernetes, jax, rl, tensorflow]

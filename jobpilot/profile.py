@@ -195,6 +195,7 @@ def load_profile(path: str | Path) -> Profile:
         narrative=str(data.get("narrative", "")).strip(),
         links={str(k): str(v) for k, v in (identity.get("links", {}) or {}).items()},
         education=[dict(e) for e in data.get("education", []) or []],
+        achievements=[str(a).strip() for a in data.get("achievements", []) or [] if str(a).strip()],
         skills=skills,
         evidence=evidence,
         preferences=preferences,

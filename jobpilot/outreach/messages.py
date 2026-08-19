@@ -64,8 +64,15 @@ def _top_evidence(profile: Profile, assessment: Assessment | None, limit: int = 
 
 
 def _evidence_line(ev: Evidence) -> str:
-    detail = ev.highlights[0] if ev.highlights else first_sentence(ev.summary, 150)
-    detail = detail[0].lower() + detail[1:] if detail else ""
+    """One line per project, leading with a result rather than a method.
+
+    A recruiter reading three lines wants the number, not the training recipe,
+    so a highlight or metric that carries a figure wins over the first bullet.
+    """
+    candidates = list(ev.metrics) + list(ev.highlights)
+    with_numbers = [line for line in candidates if any(ch.isdigit() for ch in line)]
+    detail = (with_numbers or candidates or [first_sentence(ev.summary, 150)])[0]
+    detail = _decap(truncate(detail, 220)) if detail else ""
     return f"{ev.name} - {detail.rstrip('.')}" if detail else ev.name
 
 
@@ -106,13 +113,25 @@ def _decap(text: str) -> str:
     return text[0].lower() + text[1:]
 
 
+def _clause(text: str, limit: int) -> str:
+    """Shorten to a clause boundary, not mid-phrase with an ellipsis."""
+    text = " ".join((text or "").split()).rstrip(". ")
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    for mark in (", ", "; ", " - ", " and "):
+        if mark in cut:
+            return cut[: cut.rfind(mark)].rstrip(", ;-")
+    return cut.rsplit(" ", 1)[0].rstrip(", ;-")
+
+
 def _company_hook(company: Company | None, job: Job | None) -> str:
-    text = ""
+    source = ""
     if company and company.about:
-        text = first_sentence(company.about, 180)
+        source = first_sentence(company.about, 200)
     elif job and job.description:
-        text = first_sentence(job.description, 160)
-    return _LEADING_VERB.sub("", text).rstrip(".").strip()
+        source = first_sentence(job.description, 200)
+    return _clause(_LEADING_VERB.sub("", source), 95).strip()
 
 
 def build_drafts(profile: Profile, job: Job, assessment: Assessment,
@@ -125,8 +144,9 @@ def build_drafts(profile: Profile, job: Job, assessment: Assessment,
     hook = _company_hook(company, job)
     links = _links_line(profile)
     company_name = company.name if company else job.company_name
-    sign = f"\n\n{profile.name}" + (f"\n{links}" if links else "") + \
-           (f"\n{profile.email}" if profile.email else "")
+    sign = (f"\n\n{profile.name}"
+            + (f"\n{profile.email}" if profile.email else "")
+            + (f"\n{links}" if links else ""))
 
     if mode is Mode.DIRECT:
         subject = f"{job.title} - {profile.name}"
@@ -169,14 +189,12 @@ def build_drafts(profile: Profile, job: Job, assessment: Assessment,
             f"{'What is' if len(ev_lines) == 1 else 'Two things that are'} most relevant here:\n"
             + "\n".join(ev_lines)
             + f"\n\n{strengths_line}{ask}"
-            + (f"\n\nWork: {links}" if links else "")
             + sign)
 
     short_body = (f"{greeting}\n\n"
                   f"{opening.strip()} "
                   f"{(evidence[0].name + ': ' + first_sentence(evidence[0].summary, 140)) if evidence else ''}\n\n"
                   f"{ask}"
-                  + (f"\n\n{links}" if links else "")
                   + sign)
 
     note_core = (f"I work on {strengths or 'applied AI'} - "

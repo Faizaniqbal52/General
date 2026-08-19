@@ -65,6 +65,13 @@ def render_markdown(resume: TailoredResume, *, include_notes: bool = False) -> s
             head = " ".join(p for p in (row.get("degree", ""), row.get("field", "")) if p)
             meta = " · ".join(p for p in (row.get("institution", ""), row.get("period", "")) if p)
             out.append(f"**{head}**{(' — ' + meta) if meta else ''}")
+            if row.get("notes"):
+                out.append(row["notes"])
+        out.append("")
+
+    if resume.achievements:
+        out.append("## Recognition")
+        out += [f"- {line}" for line in resume.achievements]
         out.append("")
 
     if include_notes:
@@ -143,10 +150,15 @@ def render_html(resume: TailoredResume) -> str:
         for row in resume.education:
             head = " ".join(p for p in (row.get("degree", ""), row.get("field", "")) if p)
             meta = " · ".join(p for p in (row.get("institution", ""), row.get("period", "")) if p)
+            notes = (f"<div class='item-sub'>{_h(row['notes'])}</div>" if row.get("notes") else "")
             rows.append(f"<div class='item'><div class='item-head'>"
                         f"<span class='item-name'>{_h(head)}</span>"
-                        f"<span class='item-meta'>{_h(meta)}</span></div></div>")
+                        f"<span class='item-meta'>{_h(meta)}</span></div>{notes}</div>")
         blocks.append("<h2>Education</h2>" + "".join(rows))
+
+    if resume.achievements:
+        items = "".join(f"<li>{_h(line)}</li>" for line in resume.achievements)
+        blocks.append(f"<h2>Recognition</h2><ul>{items}</ul>")
 
     contact = _contact_line(resume)
     title = f"{resume.name} — {resume.job_title} — {resume.company_name}"

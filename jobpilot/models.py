@@ -170,6 +170,7 @@ class Profile:
     narrative: str = ""
     links: dict[str, str] = field(default_factory=dict)
     education: list[dict[str, Any]] = field(default_factory=list)
+    achievements: list[str] = field(default_factory=list)
     skills: dict[str, Skill] = field(default_factory=dict)
     evidence: dict[str, Evidence] = field(default_factory=dict)
     preferences: Preferences = field(default_factory=Preferences)
