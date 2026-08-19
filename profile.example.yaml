@@ -1,0 +1,198 @@
+# ---------------------------------------------------------------------------
+# JobPilot master profile - your "professional brain".
+#
+# Rules:
+#   * Every skill can cite `evidence:` ids. Those ids must exist in projects /
+#     experience / publications / open_source / certifications below.
+#   * A skill with no evidence is allowed, but it is down-weighted during
+#     matching and is never featured on a tailored resume. That is deliberate:
+#     the agent must not be able to claim something you cannot defend.
+#   * levels: strong | intermediate | basic | exploratory
+#
+# Copy this to profile.yaml and edit. `python -m jobpilot audit` checks it.
+# ---------------------------------------------------------------------------
+
+identity:
+  name: Faizan Iqbal
+  email: ifaizan041@gmail.com
+  phone: ""
+  location: "Srinagar, Jammu & Kashmir, India"
+  headline: "AI Engineer - low-resource NLP, document AI and applied LLMs"
+  links:
+    github: https://github.com/faizaniqbal52
+    linkedin: ""
+    huggingface: ""
+    website: ""
+    scholar: ""
+
+narrative: >
+  Computer science student who builds AI systems independently rather than
+  waiting for a syllabus. Most of my work targets problems that large labs
+  ignore: Kashmiri and other low-resource Indian languages, handwritten and
+  printed document recognition, and evaluation of language models on languages
+  that barely appear in their training data. I have built the datasets, trained
+  and evaluated the models, and written up the results, and I want to do the
+  same kind of work inside a team that is serious about Indian-language and
+  applied AI.
+
+education:
+  - degree: B.Tech
+    field: Computer Science
+    institution: "<your university>"
+    period: "2022 - 2026"
+    location: "India"
+    notes: ""
+
+# ---------------------------------------------------------------------------
+# Evidence. Everything below can be cited by a skill and selected by the
+# resume tailorer. `domains` should use keys from jobpilot/parsing/taxonomy.py
+# (indian_language_ai, document_ai, low_resource_nlp, foundation_models, ...).
+# ---------------------------------------------------------------------------
+
+projects:
+  - id: koshur_ocr
+    name: KoshurOCR
+    role: Solo builder
+    period: "2024 - present"
+    summary: >
+      End-to-end OCR system for the Kashmiri (Perso-Arabic) script, covering
+      synthetic and real data generation, line segmentation, recognition model
+      training and evaluation.
+    highlights:
+      - Built a synthetic + scanned corpus for a script with no public OCR dataset
+      - Trained and compared CRNN, TrOCR and PARSeq style recognisers in PyTorch
+      - Set up an evaluation harness reporting CER/WER per font and per document type
+    skills: [python, pytorch, ocr, cv, deep_learning, data_engineering, evaluation]
+    domains: [document_ai, indian_language_ai, low_resource_nlp, computer_vision]
+    metrics:
+      - "<add your CER/WER numbers here>"
+    links: []
+
+  - id: koshur_ai
+    name: KoshurAI
+    role: Solo builder
+    period: "2024 - present"
+    summary: >
+      Language technology work for Kashmiri: corpus collection, translation and
+      evaluation of open LLMs on a language they are effectively unseen on.
+    highlights:
+      - Assembled and cleaned a Kashmiri text corpus from public sources
+      - Fine-tuned open models with LoRA/PEFT on Hugging Face for translation
+      - Ran systematic evaluations of open LLMs on low-resource language tasks
+    skills: [python, nlp, llm, llm_finetuning, huggingface, low_resource_nlp, evaluation, data_engineering]
+    domains: [indian_language_ai, low_resource_nlp, foundation_models]
+    metrics: []
+    links: []
+
+  - id: rag_assistant
+    name: Retrieval-augmented document assistant
+    role: Solo builder
+    period: "2025"
+    summary: >
+      A RAG service over scanned and digital documents with a FastAPI backend,
+      chunking/embedding pipeline and answer-grounding checks.
+    highlights:
+      - Built ingestion, chunking, embedding and retrieval as separate services
+      - Added grounding checks that reject answers with no supporting passage
+    skills: [python, rag, llm, backend, evaluation, docker]
+    domains: [document_ai, search, agentic_ai]
+    metrics: []
+    links: []
+
+experience: []
+# Example shape:
+#   - id: internship_x
+#     name: "<Company>"
+#     role: "ML Intern"
+#     period: "Jun 2025 - Aug 2025"
+#     summary: "..."
+#     highlights: ["..."]
+#     skills: [python, pytorch]
+#     domains: [computer_vision]
+
+publications:
+  - id: llm_lowresource_paper
+    name: "Evaluating open LLMs on a low-resource Indian language"
+    role: Author
+    period: "2025"
+    summary: "Preprint on the behaviour of open language models on Kashmiri tasks."
+    skills: [research, evaluation, llm, nlp, writing]
+    domains: [low_resource_nlp, indian_language_ai]
+    links: []
+
+open_source:
+  - id: gh_profile
+    name: "Public repositories"
+    role: Maintainer
+    period: "2023 - present"
+    summary: "Training scripts, dataset tooling and evaluation code released publicly."
+    skills: [python, git, pytorch, writing]
+    domains: []
+    links: ["https://github.com/faizaniqbal52"]
+
+certifications: []
+
+# ---------------------------------------------------------------------------
+# Skills. Declare the level honestly; cite evidence ids.
+# ---------------------------------------------------------------------------
+skills:
+  - {name: python,             level: strong,       evidence: [koshur_ocr, koshur_ai, rag_assistant, gh_profile]}
+  - {name: pytorch,            level: strong,       evidence: [koshur_ocr, koshur_ai]}
+  - {name: deep_learning,      level: strong,       evidence: [koshur_ocr, koshur_ai]}
+  - {name: nlp,                level: strong,       evidence: [koshur_ai, llm_lowresource_paper]}
+  - {name: llm,                level: strong,       evidence: [koshur_ai, rag_assistant, llm_lowresource_paper]}
+  - {name: llm_finetuning,     level: intermediate, evidence: [koshur_ai]}
+  - {name: huggingface,        level: strong,       evidence: [koshur_ai]}
+  - {name: ocr,                level: strong,       evidence: [koshur_ocr]}
+  - {name: cv,                 level: strong,       evidence: [koshur_ocr]}
+  - {name: low_resource_nlp,   level: strong,       evidence: [koshur_ai, koshur_ocr, llm_lowresource_paper]}
+  - {name: evaluation,         level: strong,       evidence: [koshur_ocr, koshur_ai, llm_lowresource_paper]}
+  - {name: data_engineering,   level: strong,       evidence: [koshur_ocr, koshur_ai]}
+  - {name: rag,                level: intermediate, evidence: [rag_assistant]}
+  - {name: research,           level: intermediate, evidence: [llm_lowresource_paper]}
+  - {name: backend,            level: intermediate, evidence: [rag_assistant]}
+  - {name: git,                level: strong,       evidence: [gh_profile]}
+  - {name: numpy,              level: strong,       evidence: [koshur_ocr, koshur_ai]}
+  - {name: linux,              level: intermediate, evidence: [koshur_ocr]}
+  - {name: docker,             level: basic,        evidence: [rag_assistant]}
+  - {name: sql,                level: basic,        evidence: []}
+  - {name: tensorflow,         level: exploratory,  evidence: [],  note: "coursework only, no shipped project"}
+  - {name: kubernetes,         level: exploratory,  evidence: [],  note: "read about it, never operated a cluster"}
+  - {name: aws,                level: basic,        evidence: [],  note: "small deployments only"}
+  - {name: agents,             level: intermediate, evidence: [rag_assistant]}
+  - {name: mlops,              level: basic,        evidence: [koshur_ocr]}
+  - {name: speech,             level: exploratory,  evidence: [],  note: "interested, no project yet"}
+
+preferences:
+  roles:
+    - AI Engineer
+    - ML Engineer
+    - LLM Engineer
+    - NLP Engineer
+    - Research Engineer
+    - Computer Vision Engineer
+    - AI/ML Intern
+    - Member of Technical Staff
+    - Software Engineer
+  locations: [Bengaluru, Hyderabad, Delhi NCR, Pune, Mumbai, Remote, India]
+  remote_ok: true
+  onsite_ok: true
+  relocate_ok: true
+  employment_types: [full_time, internship, contract]
+  min_salary_lpa: null
+  domains:
+    - indian_language_ai
+    - low_resource_nlp
+    - document_ai
+    - foundation_models
+    - agentic_ai
+    - computer_vision
+  avoid: [sales, marketing, "field engineer"]
+
+constraints:
+  graduation_year: 2026
+  years_experience: 0.5
+  highest_degree: bachelors
+  work_authorization: [India]
+  notice_period_days: 0
+  willing_to_learn: [kubernetes, aws, distributed_training, speech, tensorflow]

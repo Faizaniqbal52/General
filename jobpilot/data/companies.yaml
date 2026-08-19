@@ -1,0 +1,378 @@
+# ---------------------------------------------------------------------------
+# Seed company universe: Indian AI/ML organisations worth watching, weighted
+# towards Indian-language AI, document AI, speech, foundation models and
+# applied AI - i.e. the places where an evidence-backed low-resource NLP / OCR
+# profile actually lands.
+#
+# THIS IS A SEED LIST, NOT A VERIFIED DATABASE.
+#   * `website` values are best-effort and should be confirmed before outreach.
+#   * `ats` is intentionally left empty for most entries. Run
+#         python -m jobpilot probe --write my_companies.yaml
+#     to discover which board a company actually publishes on, and store the
+#     verified provider/slug in your own file.
+#   * `founders` and `signals` are context for outreach, not a claim of fact -
+#     confirm on the company's own site before you write to anyone.
+#
+# `signals` vocabulary: iit_founder, iisc_founder, iim_founder, govt_backed,
+# research_lab, deeptech, open_source, well_funded, early_stage.
+#
+# `outreach_modes` (first one wins when there is no posting):
+#   direct | recruiter | founder | technical
+# ---------------------------------------------------------------------------
+
+companies:
+  # --- Indian-language / foundation models --------------------------------
+  - key: sarvam_ai
+    name: Sarvam AI
+    website: https://www.sarvam.ai
+    hq: Bengaluru
+    stage: series_a
+    domains: [indian_language_ai, foundation_models, speech_ai, low_resource_nlp, agentic_ai]
+    about: >
+      Builds foundational models for Indian languages, including speech and text,
+      along with the tooling and applications around them.
+    signals: [iit_founder, deeptech, well_funded, research_lab]
+    outreach_modes: [technical, recruiter]
+    founders:
+      - {name: "Vivek Raghavan", note: "co-founder"}
+      - {name: "Pratyush Kumar", note: "co-founder"}
+
+  - key: ai4bharat
+    name: AI4Bharat (IIT Madras)
+    website: https://ai4bharat.iitm.ac.in
+    hq: Chennai
+    stage: research_lab
+    domains: [indian_language_ai, low_resource_nlp, speech_ai, foundation_models]
+    about: >
+      Academic research lab at IIT Madras releasing open datasets, models and
+      benchmarks for Indian languages. Takes research interns and collaborators.
+    signals: [research_lab, open_source, govt_backed]
+    outreach_modes: [technical]
+
+  - key: bharatgen
+    name: BharatGen
+    website: https://bharatgen.tech
+    hq: Mumbai
+    stage: research_lab
+    domains: [indian_language_ai, foundation_models, low_resource_nlp]
+    about: >
+      Government-supported multimodal foundation-model initiative led from the
+      IIT system, focused on Indian languages.
+    signals: [govt_backed, research_lab, iit_founder]
+    outreach_modes: [technical]
+
+  - key: krutrim
+    name: Krutrim
+    website: https://www.olakrutrim.com
+    hq: Bengaluru
+    stage: growth
+    domains: [indian_language_ai, foundation_models, ai_infra, agentic_ai]
+    about: >
+      Indian-language large language models plus the cloud/silicon stack
+      around them.
+    signals: [well_funded, deeptech]
+    outreach_modes: [recruiter, technical]
+
+  - key: soket_ai
+    name: Soket AI Labs
+    website: https://soket.ai
+    hq: Bengaluru
+    stage: early
+    domains: [indian_language_ai, foundation_models, low_resource_nlp, open_source]
+    about: >
+      Works on open foundation models for Indian languages and sovereign AI use
+      cases.
+    signals: [early_stage, open_source, deeptech]
+    outreach_modes: [founder, technical]
+
+  - key: two_ai
+    name: Two AI
+    website: https://www.two.ai
+    hq: Bengaluru
+    stage: early
+    domains: [foundation_models, indian_language_ai, multimodal]
+    about: >
+      Builds multilingual foundation models with an India and Asia language
+      focus.
+    signals: [deeptech, early_stage]
+    outreach_modes: [technical, founder]
+
+  - key: corover
+    name: CoRover.ai
+    website: https://corover.ai
+    hq: Bengaluru
+    stage: growth
+    domains: [indian_language_ai, agentic_ai, speech_ai]
+    about: >
+      Conversational AI platform with Indian-language assistants deployed at
+      large public-sector scale.
+    signals: [deeptech]
+    outreach_modes: [recruiter]
+
+  # --- Speech / voice -----------------------------------------------------
+  - key: gnani_ai
+    name: Gnani.ai
+    website: https://www.gnani.ai
+    hq: Bengaluru
+    stage: growth
+    domains: [speech_ai, indian_language_ai, agentic_ai]
+    about: Speech-to-speech and voice AI for Indian languages, used in contact centres.
+    signals: [deeptech]
+    outreach_modes: [recruiter, technical]
+
+  - key: gan_ai
+    name: Gan.ai
+    website: https://gan.ai
+    hq: Bengaluru
+    stage: early
+    domains: [speech_ai, multimodal, foundation_models]
+    about: Voice cloning and personalised video/voice generation research and products.
+    signals: [early_stage, deeptech]
+    outreach_modes: [founder, technical]
+
+  - key: skit_ai
+    name: Skit.ai
+    website: https://skit.ai
+    hq: Bengaluru
+    stage: growth
+    domains: [speech_ai, agentic_ai, indian_language_ai]
+    about: Voice AI agents; historically strong on Indian-language speech.
+    signals: [deeptech]
+    outreach_modes: [recruiter]
+
+  - key: navana_tech
+    name: Navana Tech
+    website: https://www.navanatech.in
+    hq: Mumbai
+    stage: early
+    domains: [speech_ai, indian_language_ai, low_resource_nlp]
+    about: Voice interfaces for Indian languages, aimed at low-literacy users.
+    signals: [early_stage]
+    outreach_modes: [founder]
+
+  - key: slang_labs
+    name: Slang Labs
+    website: https://www.slanglabs.in
+    hq: Bengaluru
+    stage: early
+    domains: [speech_ai, indian_language_ai]
+    about: Multilingual in-app voice assistants for Indian consumer apps.
+    signals: [early_stage]
+    outreach_modes: [founder]
+
+  # --- Document AI / OCR --------------------------------------------------
+  - key: nanonets
+    name: Nanonets
+    website: https://nanonets.com
+    hq: Bengaluru
+    stage: growth
+    domains: [document_ai, computer_vision, agentic_ai]
+    about: >
+      Document AI and intelligent document processing - OCR, extraction and
+      workflow automation over messy real-world documents.
+    signals: [deeptech, well_funded]
+    outreach_modes: [recruiter, technical]
+
+  - key: docsumo
+    name: Docsumo
+    website: https://www.docsumo.com
+    hq: Bengaluru
+    stage: growth
+    domains: [document_ai, computer_vision]
+    about: Intelligent document processing for financial and insurance documents.
+    signals: [deeptech]
+    outreach_modes: [recruiter]
+
+  # --- Data / language infrastructure ------------------------------------
+  - key: karya
+    name: Karya
+    website: https://karya.in
+    hq: Bengaluru
+    stage: early
+    domains: [indian_language_ai, low_resource_nlp, ai_infra]
+    about: >
+      Ethical data company creating speech and text datasets in Indian
+      languages, including under-served ones.
+    signals: [early_stage, deeptech]
+    outreach_modes: [founder, technical]
+
+  - key: reverie
+    name: Reverie Language Technologies
+    website: https://reverieinc.com
+    hq: Bengaluru
+    stage: growth
+    domains: [indian_language_ai, low_resource_nlp, search]
+    about: Indian-language localisation, transliteration, search and voice stack.
+    signals: [deeptech]
+    outreach_modes: [recruiter]
+
+  - key: devnagri
+    name: Devnagri AI
+    website: https://devnagri.com
+    hq: Noida
+    stage: early
+    domains: [indian_language_ai, low_resource_nlp]
+    about: Machine translation and localisation for Indian languages.
+    signals: [early_stage]
+    outreach_modes: [founder, recruiter]
+
+  # --- AI infrastructure --------------------------------------------------
+  - key: neysa
+    name: Neysa
+    website: https://www.neysa.ai
+    hq: Mumbai
+    stage: early
+    domains: [ai_infra, foundation_models]
+    about: GPU cloud and AI infrastructure for model training and inference.
+    signals: [well_funded, deeptech]
+    outreach_modes: [recruiter]
+
+  - key: e2e_networks
+    name: E2E Networks
+    website: https://www.e2enetworks.com
+    hq: Delhi NCR
+    stage: public
+    domains: [ai_infra]
+    about: Indian GPU cloud provider serving AI workloads.
+    signals: []
+    outreach_modes: [recruiter]
+
+  - key: zenteiq
+    name: Zenteiq Aitech
+    website: https://zenteiq.ai
+    hq: Bengaluru
+    stage: early
+    domains: [ai_infra, education_ai, foundation_models]
+    about: >
+      Deep-tech company with roots in the IISc scientific-computing ecosystem,
+      working on AI platforms and scientific ML.
+    signals: [iisc_founder, early_stage, deeptech]
+    outreach_modes: [founder, technical]
+
+  # --- Applied / agentic AI ----------------------------------------------
+  - key: composio
+    name: Composio
+    website: https://composio.dev
+    hq: San Francisco / Bengaluru
+    stage: early
+    domains: [agentic_ai, devtools]
+    about: Tooling and integrations layer for LLM agents; India-based engineering.
+    signals: [early_stage, open_source, deeptech]
+    outreach_modes: [founder, technical]
+
+  - key: dashtoon
+    name: Dashtoon
+    website: https://dashtoon.com
+    hq: Delhi NCR
+    stage: early
+    domains: [computer_vision, multimodal, foundation_models]
+    about: Generative visual storytelling; heavy diffusion/vision model work.
+    signals: [early_stage, iit_founder]
+    outreach_modes: [founder, technical]
+
+  - key: avataar
+    name: Avataar.ai
+    website: https://avataar.ai
+    hq: Bengaluru
+    stage: growth
+    domains: [computer_vision, multimodal, ai_infra]
+    about: 3D and visual AI for commerce, built on deep computer-vision research.
+    signals: [deeptech, well_funded]
+    outreach_modes: [recruiter, technical]
+
+  - key: observe_ai
+    name: Observe.AI
+    website: https://www.observe.ai
+    hq: Bengaluru
+    stage: growth
+    domains: [speech_ai, agentic_ai, foundation_models]
+    about: Contact-centre AI built on speech and language models.
+    signals: [well_funded]
+    outreach_modes: [recruiter]
+
+  - key: uniphore
+    name: Uniphore
+    website: https://www.uniphore.com
+    hq: Chennai / Palo Alto
+    stage: growth
+    domains: [speech_ai, agentic_ai, multimodal]
+    about: Conversational and multimodal AI for enterprises.
+    signals: [iit_founder, well_funded]
+    outreach_modes: [recruiter]
+
+  - key: haptik
+    name: Haptik (Jio)
+    website: https://www.haptik.ai
+    hq: Mumbai
+    stage: growth
+    domains: [agentic_ai, indian_language_ai]
+    about: Conversational AI assistants, including Indian-language deployments.
+    signals: []
+    outreach_modes: [recruiter]
+
+  - key: fractal
+    name: Fractal Analytics
+    website: https://fractal.ai
+    hq: Mumbai
+    stage: growth
+    domains: [foundation_models, agentic_ai, computer_vision]
+    about: Large applied-AI services and products company with sizeable ML teams.
+    signals: [well_funded]
+    outreach_modes: [recruiter]
+
+  # --- Research-heavy labs and programmes ---------------------------------
+  - key: shodh_ai
+    name: Shodh AI
+    website: ""
+    hq: ""
+    stage: early
+    domains: [foundation_models, low_resource_nlp]
+    about: >
+      Early-stage research-oriented AI group; verify the current site and focus
+      before reaching out.
+    signals: [early_stage, research_lab]
+    outreach_modes: [founder, technical]
+
+  - key: genloop
+    name: Genloop
+    website: https://genloop.ai
+    hq: Delhi NCR
+    stage: early
+    domains: [foundation_models, agentic_ai]
+    about: Personalised LLMs for enterprises; small technical team.
+    signals: [early_stage, iit_founder]
+    outreach_modes: [founder]
+
+  - key: iiit_h_ltrc
+    name: LTRC, IIIT Hyderabad
+    website: https://ltrc.iiit.ac.in
+    hq: Hyderabad
+    stage: research_lab
+    domains: [indian_language_ai, low_resource_nlp, speech_ai]
+    about: >
+      Long-running Indian-language technology research centre; research
+      internships and RA positions are a realistic route in.
+    signals: [research_lab, govt_backed]
+    outreach_modes: [technical]
+
+  - key: microsoft_research_india
+    name: Microsoft Research India
+    website: https://www.microsoft.com/en-us/research/lab/microsoft-research-india/
+    hq: Bengaluru
+    stage: research_lab
+    domains: [low_resource_nlp, indian_language_ai, foundation_models]
+    about: >
+      Research lab with a strong track record in Indian-language and
+      technology-for-emerging-markets work; runs a research fellowship.
+    signals: [research_lab, well_funded]
+    outreach_modes: [technical]
+
+  - key: google_deepmind_india
+    name: Google Research India
+    website: https://research.google/locations/india/
+    hq: Bengaluru
+    stage: research_lab
+    domains: [indian_language_ai, low_resource_nlp, foundation_models, speech_ai]
+    about: Research group with significant Indian-language and speech work.
+    signals: [research_lab, well_funded]
+    outreach_modes: [technical, recruiter]

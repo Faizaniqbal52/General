@@ -2,3 +2,12 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+
+# JobPilot: personal data and generated artefacts stay out of git
+profile.yaml
+people.yaml
+my_companies.yaml
+jobpilot.db
+out/
+.jobpilot-cache/
+*.xlsx

@@ -1,0 +1,4 @@
+PyYAML>=6.0        # profile, company and people files
+requests>=2.31     # optional: urllib is used when this is missing
+openpyxl>=3.1      # optional: CSV export is used when this is missing
+# anthropic>=0.40  # optional: only needed for `jobpilot run --llm`

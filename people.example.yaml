@@ -1,0 +1,26 @@
+# ---------------------------------------------------------------------------
+# Contacts you have found yourself, with a source and an honest status.
+#
+# email_status:
+#   verified       - you have confirmed it works (a reply, a bounce test, a
+#                    published address on the company's own site you trust)
+#   published      - listed publicly by the company or the person
+#   pattern_guess  - constructed from a name and a domain. A GUESS.
+#   unknown        - you have a name but no address
+#
+# Copy to people.yaml. Nothing in here is ever sent automatically.
+# ---------------------------------------------------------------------------
+
+people:
+  - key: sarvam_ai_ml_lead
+    company: sarvam_ai            # must match a company key in the registry
+    name: ""                      # fill in from the searches jobpilot prints
+    title: ""
+    role_class: ml_lead           # recruiter | talent_acquisition | hiring_manager
+                                  # | ml_lead | research_lead | engineering_manager
+                                  # | founder | cto
+    linkedin: ""
+    email: ""
+    email_status: unknown
+    source: ""                    # where you found this, and when
+    notes: ""

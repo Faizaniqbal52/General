@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jobpilot"
+version = "0.1.0"
+description = "A personal, evidence-backed AI job-hunting agent for India-focused AI/ML and software roles"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["PyYAML>=6.0"]
+
+[project.optional-dependencies]
+full = ["requests>=2.31", "openpyxl>=3.1"]
+llm = ["anthropic>=0.40"]
+
+[project.scripts]
+jobpilot = "jobpilot.cli:main"
+
+[tool.setuptools]
+packages = [
+    "jobpilot", "jobpilot.discovery", "jobpilot.parsing", "jobpilot.matching",
+    "jobpilot.resume", "jobpilot.outreach", "jobpilot.store", "jobpilot.export",
+]
+
+[tool.setuptools.package-data]
+jobpilot = ["data/*.yaml"]
